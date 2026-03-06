@@ -12,11 +12,14 @@ pub fn run() {
             environment::check_node_exists,
             environment::download_and_install_node,
             environment::get_environment_info,
-            // OpenClaw source & deps
+            // OpenClaw source & deps & config
             openclaw::check_openclaw_exists,
             openclaw::check_node_modules_exists,
+            openclaw::check_config_exists,
             openclaw::download_openclaw_source,
             openclaw::run_npm_install,
+            openclaw::inject_default_config,
+            openclaw::inject_default_models,
             openclaw::setup_openclaw,
             // Service lifecycle
             service::is_service_running,

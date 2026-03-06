@@ -15,12 +15,15 @@
 - [x] 实现基础控制台 UI (启停服务、读取基础日志) ✅ (React + Rust full-stack, 0 errors)
 - [ ] [Phase 1 测试]: 在纯净版 Windows/Mac 虚拟机无报错启动 OpenClaw。
 
-## 🎨 Phase 2: “Aha Moment” 体验改造
-- [ ] [暂未开工] 编写配置注入脚本 (自动生成带有免费网关的 `models.json`)
-- [ ] [暂未开工] 预置打包 `skill_creator` 和 `skill-lookup`
-- [ ] [暂未开工] 开发开机“工作区向导” (Workspace 文件夹选择)
-- [ ] [暂未开工] UI 全面翻新 (状态大屏、侧边栏、人话日志展示)
-- [ ] [Phase 2 测试]: 小白用户一键点击，打开网页直接对话。
+## 🎨 Phase 2: "Aha Moment" 体验改造 (参考 /docs/phases/phase2_experience.md)
+- [x] [P0] 配置注入: 自动生成 `openclaw.json` (非破坏性) ✅
+- [x] [P0] 配置注入: 自动生成 `models.json` (预置免费 API Key) ✅
+- [ ] [P1] 工作区向导: 首次启动弹出文件夹选择对话框
+- [ ] [P1] 启动后自动打开浏览器 (`localhost:3000`)
+- [ ] [P2] UI 升级: 状态大卡片 (运行时长、模型、工作区路径)
+- [ ] [P2] 人话日志: 日志翻译层 + 原始/人话切换
+- [ ] [P3] 预置技能包: 内置 `skill-creator` 和 `skill-lookup`
+- [ ] [Phase 2 测试]: 小白用户双击安装 → 浏览器弹出 → 直接对话
 
 ## ⚙️ Phase 3: 管家与生态补全
 - [ ] [暂未开工] 开发 3000 端口占用探针与“一键修复网络”逻辑

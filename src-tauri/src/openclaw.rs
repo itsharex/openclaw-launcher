@@ -336,7 +336,95 @@ async fn test_url_reachable(url: &str) -> bool {
     client.head(url).send().await.is_ok()
 }
 
-/// Full setup pipeline: download source + install deps
+/// Inject default openclaw.json configuration (non-destructive)
+#[tauri::command]
+pub fn inject_default_config(app: tauri::AppHandle) -> Result<String, String> {
+    let openclaw_dir = get_openclaw_dir()?;
+    let config_path = openclaw_dir.join(".openclaw.json");
+
+    if config_path.exists() {
+        return Ok("Config already exists, skipping".to_string());
+    }
+
+    // Default workspace: ~/Documents/OpenClaw-Projects
+    let workspace = dirs::document_dir()
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join("Documents"))
+        .join("OpenClaw-Projects");
+
+    // Ensure workspace directory exists
+    let _ = std::fs::create_dir_all(&workspace);
+
+    let config = serde_json::json!({
+        "workspace": workspace.to_string_lossy(),
+        "server": {
+            "port": 3000,
+            "host": "localhost"
+        },
+        "language": "zh-CN",
+        "autoOpen": true
+    });
+
+    let content = serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("序列化配置失败: {}", e))?;
+    std::fs::write(&config_path, content)
+        .map_err(|e| format!("写入配置文件失败: {}", e))?;
+
+    let _ = app.emit("setup-progress", serde_json::json!({
+        "stage": "config_inject",
+        "message": format!("✅ 默认配置已生成，工作区: {}", workspace.display()),
+        "percent": 96
+    }));
+
+    Ok(format!("Config created at: {}", config_path.display()))
+}
+
+/// Inject default models.json with a default model (non-destructive)
+#[tauri::command]
+pub fn inject_default_models(app: tauri::AppHandle) -> Result<String, String> {
+    let openclaw_dir = get_openclaw_dir()?;
+    let models_path = openclaw_dir.join("models.json");
+
+    if models_path.exists() {
+        return Ok("Models config already exists, skipping".to_string());
+    }
+
+    let models = serde_json::json!({
+        "models": [
+            {
+                "id": "default",
+                "name": "默认模型",
+                "provider": "openai-compatible",
+                "apiBase": "",
+                "apiKey": "",
+                "model": "gpt-4o-mini",
+                "enabled": true
+            }
+        ],
+        "defaultModel": "default"
+    });
+
+    let content = serde_json::to_string_pretty(&models)
+        .map_err(|e| format!("序列化模型配置失败: {}", e))?;
+    std::fs::write(&models_path, content)
+        .map_err(|e| format!("写入模型配置失败: {}", e))?;
+
+    let _ = app.emit("setup-progress", serde_json::json!({
+        "stage": "models_inject",
+        "message": "✅ 模型配置已生成！首次使用请配置你的 API Key",
+        "percent": 97
+    }));
+
+    Ok(format!("Models config created at: {}", models_path.display()))
+}
+
+/// Check if config has been injected
+#[tauri::command]
+pub fn check_config_exists() -> Result<bool, String> {
+    let dir = get_openclaw_dir()?;
+    Ok(dir.join(".openclaw.json").exists())
+}
+
+/// Full setup pipeline: download source + install deps + inject config
 #[tauri::command]
 pub async fn setup_openclaw(app: tauri::AppHandle) -> Result<String, String> {
     // Step 1: Ensure Node.js is ready
@@ -349,6 +437,10 @@ pub async fn setup_openclaw(app: tauri::AppHandle) -> Result<String, String> {
 
     // Step 3: Install npm dependencies
     run_npm_install(app.clone()).await?;
+
+    // Step 4: Inject default configs (non-destructive)
+    inject_default_config(app.clone())?;
+    inject_default_models(app.clone())?;
 
     let _ = app.emit("setup-progress", serde_json::json!({
         "stage": "all_done",

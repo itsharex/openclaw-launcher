@@ -54,6 +54,12 @@ const LOG_TRANSLATIONS: [RegExp, string][] = [
   [/ready in/i, "✅ 启动完成！"],
 ];
 
+// Strip ANSI escape codes from terminal output
+function stripAnsi(str: string): string {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1b\[[0-9;]*m/g, "").replace(/\[[\d;]*m/g, "");
+}
+
 function humanizeLog(msg: string): string | undefined {
   for (const [pattern, translation] of LOG_TRANSLATIONS) {
     if (pattern.test(msg)) return translation;
@@ -109,8 +115,9 @@ function App() {
   const addLog = (level: string, message: string) => {
     const now = new Date();
     const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
-    const humanized = humanizeLog(message);
-    setLogs((prev) => [...prev.slice(-300), { time, level, message, humanized }]);
+    const cleanMsg = stripAnsi(message);
+    const humanized = humanizeLog(cleanMsg);
+    setLogs((prev) => [...prev.slice(-300), { time, level, message: cleanMsg, humanized }]);
   };
 
   // Uptime counter
@@ -315,6 +322,21 @@ function App() {
       // Update config state and close modal
       setCurrentConfig({ has_api_key: true, provider: selectedProvider, model: selectedModel, base_url: baseUrlInput || null });
       setShowKeyModal(false);
+
+      // Auto-restart service if running, so new config takes effect
+      if (running) {
+        addLog("info", "🔄 正在重启服务以加载新配置...");
+        try {
+          await invoke("stop_service");
+          setRunning(false);
+          await new Promise(r => setTimeout(r, 1000)); // brief pause
+          await invoke("start_service");
+          setRunning(true);
+          addLog("success", "✅ 服务已重启，新配置生效");
+        } catch (err) {
+          addLog("error", `重启服务失败: ${err}`);
+        }
+      }
     } catch (err) {
       setConfigStatus(`❌ 保存失败: ${err}`);
     } finally {

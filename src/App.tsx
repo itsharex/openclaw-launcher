@@ -834,14 +834,15 @@ function App() {
                 {providers.find(p => p.id === currentConfig.provider)?.models.map((m) => (
                   <button
                     key={m.id}
-                    className={`model-switch-item ${currentConfig.model === m.id ? "active" : ""}`}
+                    className={`model-switch-item ${currentConfig.model?.endsWith(m.id) ? "active" : ""}`}
                     onClick={async () => {
-                      await handleSetModel(m.id);
+                      const fullModelId = `${currentConfig.provider}/${m.id}`;
+                      await handleSetModel(fullModelId);
                       setShowModelSwitchModal(false);
                     }}
                   >
                     <span className="model-switch-name">{m.name}</span>
-                    {currentConfig.model === m.id && <span className="model-switch-badge">当前</span>}
+                    {currentConfig.model?.endsWith(m.id) && <span className="model-switch-badge">当前</span>}
                   </button>
                 )) || <div style={{ color: "var(--text-secondary)" }}>暂无可用模型</div>}
               </div>

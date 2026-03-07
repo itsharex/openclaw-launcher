@@ -32,6 +32,13 @@ interface ModelInfo {
   is_free: boolean;
 }
 
+interface CurrentConfig {
+  has_api_key: boolean;
+  provider: string | null;
+  model: string | null;
+  base_url: string | null;
+}
+
 // ===== Log humanization =====
 const LOG_TRANSLATIONS: [RegExp, string][] = [
   [/npm warn/i, "⚠️ 依赖警告（可忽略）"],
@@ -94,6 +101,10 @@ function App() {
   const [selectedModel, setSelectedModel] = useState("");
   const [configSaving, setConfigSaving] = useState(false);
   const [configStatus, setConfigStatus] = useState("");
+  const [currentConfig, setCurrentConfig] = useState<CurrentConfig | null>(null);
+
+  // Mandatory API Key modal
+  const [showKeyModal, setShowKeyModal] = useState(false);
 
   const addLog = (level: string, message: string) => {
     const now = new Date();
@@ -182,6 +193,8 @@ function App() {
           setPhase("ready");
           setRunning(serviceRunning);
           addLog("success", "✅ 环境检查通过，所有组件就绪");
+          // Check if API key is configured
+          await checkApiKey();
         }
       } else {
         setPhase("initializing");
@@ -195,12 +208,28 @@ function App() {
     }
   };
 
+  const checkApiKey = async () => {
+    try {
+      const config = await invoke<CurrentConfig>("get_current_config");
+      setCurrentConfig(config);
+      if (!config.has_api_key) {
+        // No API key configured — force the modal
+        setShowKeyModal(true);
+      }
+    } catch {
+      // Can't determine — show modal to be safe
+      setShowKeyModal(true);
+    }
+  };
+
   const runSetup = async () => {
     setLoading(true);
     try {
       await invoke("setup_openclaw");
       setPhase("ready");
       addLog("success", "🎉 OpenClaw 初始化完成！");
+      // After setup, check API key
+      await checkApiKey();
     } catch (err) {
       addLog("error", `初始化失败: ${err}`);
       setProgressMsg(`❌ 初始化失败: ${err}`);
@@ -221,10 +250,28 @@ function App() {
       await invoke("inject_default_models");
       addLog("success", `✅ 工作区已配置: ${workspacePath || "默认目录"}`);
       setPhase("ready");
+      // Check API key after workspace is set
+      await checkApiKey();
     } catch (err) {
       addLog("error", `配置失败: ${err}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSwitchWorkspace = async () => {
+    const selected = await open({ directory: true, multiple: false, title: "切换工作区目录" });
+    if (selected && typeof selected === "string") {
+      setWorkspacePath(selected);
+      setLoading(true);
+      try {
+        await invoke("inject_default_config");
+        addLog("success", `✅ 工作区已切换到: ${selected}`);
+      } catch (err) {
+        addLog("error", `切换失败: ${err}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -265,6 +312,9 @@ function App() {
       });
       setConfigStatus(result);
       addLog("success", result);
+      // Update config state and close modal
+      setCurrentConfig({ has_api_key: true, provider: selectedProvider, model: selectedModel, base_url: baseUrlInput || null });
+      setShowKeyModal(false);
     } catch (err) {
       setConfigStatus(`❌ 保存失败: ${err}`);
     } finally {
@@ -272,21 +322,21 @@ function App() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSetModel = async (modelId: string) => {
     try {
       const result = await invoke<string>("set_default_model", { modelId });
       setSelectedModel(modelId);
       setConfigStatus(result);
       addLog("success", result);
+      if (currentConfig) setCurrentConfig({ ...currentConfig, model: modelId });
     } catch (err) {
       setConfigStatus(`❌ 切换失败: ${err}`);
     }
   };
 
   const handleOpenRegister = async (providerId: string) => {
-    try {
-      await invoke("open_provider_register", { providerId });
-    } catch { /* ignore */ }
+    try { await invoke("open_provider_register", { providerId }); } catch { /* */ }
   };
 
   const getStatusClass = () => {
@@ -298,11 +348,17 @@ function App() {
 
   const filteredProviders = providers.filter((p) => p.category === selectedCategory);
 
+  // Find display names for current config
+  const currentProviderName = currentConfig?.provider
+    ? providers.find(p => p.id === currentConfig.provider)?.name || currentConfig.provider
+    : "未配置";
+  const currentModelName = currentConfig?.model || "未选择";
+
   // ===== Init Screen =====
   if (phase === "checking" || phase === "initializing") {
     return (
       <div className="app">
-        <Header running={false} loading={loading} phase={phase} statusClass={getStatusClass()} />
+        <Header running={false} phase={phase} statusClass={getStatusClass()} />
         <div className="init-screen">
           <div className="init-title">
             {phase === "checking" ? "🔍 正在检查环境..." : "⚙️ 正在初始化 OpenClaw"}
@@ -320,7 +376,7 @@ function App() {
   if (phase === "workspace") {
     return (
       <div className="app">
-        <Header running={false} loading={loading} phase={phase} statusClass={getStatusClass()} />
+        <Header running={false} phase={phase} statusClass={getStatusClass()} />
         <div className="init-screen">
           <div className="init-title">📂 选择工作区目录</div>
           <div className="init-message" style={{ maxWidth: 420, lineHeight: 1.8 }}>
@@ -340,10 +396,121 @@ function App() {
     );
   }
 
+  // ===== Mandatory API Key Modal =====
+  const renderKeyModal = () => {
+    if (!showKeyModal) return null;
+    return (
+      <div className="modal-overlay">
+        <div className="modal-box">
+          <div className="modal-title">🔑 配置 AI 模型 API Key</div>
+          <div className="modal-desc">
+            使用 OpenClaw 需要配置一个 API Key。推荐选择免费注册的提供商，无需付费。
+          </div>
+
+          {/* Category tabs */}
+          <div className="category-tabs" style={{ marginBottom: 12 }}>
+            {Object.entries(CATEGORY_LABELS).map(([key, { label, icon }]) => (
+              <button
+                key={key}
+                className={`category-btn ${selectedCategory === key ? "active" : ""}`}
+                onClick={() => { setSelectedCategory(key); setSelectedProvider(""); setConfigStatus(""); }}
+              >
+                {icon} {label}
+              </button>
+            ))}
+          </div>
+
+          {selectedCategory === "custom" ? (
+            <div className="modal-form">
+              <div className="form-group">
+                <label>API Base URL</label>
+                <input type="url" placeholder="https://your-relay.com/v1" value={baseUrlInput}
+                  onChange={(e) => setBaseUrlInput(e.target.value)} className="input-field" />
+              </div>
+              <div className="form-group">
+                <label>API Key</label>
+                <input type="password" placeholder="sk-..." value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)} className="input-field" />
+              </div>
+              <div className="form-group">
+                <label>模型 ID（可选）</label>
+                <input type="text" placeholder="gpt-4o / deepseek-chat / ..." value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)} className="input-field" />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="provider-list modal-providers">
+                {filteredProviders.map((p) => (
+                  <div
+                    key={p.id}
+                    className={`provider-card ${selectedProvider === p.id ? "selected" : ""}`}
+                    onClick={() => {
+                      setSelectedProvider(p.id);
+                      setBaseUrlInput(p.base_url);
+                      setSelectedModel(p.models[0]?.id || "");
+                      setConfigStatus("");
+                    }}
+                  >
+                    <div className="provider-header">
+                      <span className="provider-name">{p.name}</span>
+                      {p.category === "free" && <span className="badge-free">免费</span>}
+                    </div>
+                    <p className="provider-desc">{p.description}</p>
+                    <div className="provider-models">
+                      {p.models.slice(0, 3).map((m) => (
+                        <span key={m.id} className="model-tag">{m.name}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedProvider && (
+                <div className="modal-form" style={{ marginTop: 12 }}>
+                  <div className="form-group-row">
+                    <button className="btn-link" onClick={() => handleOpenRegister(selectedProvider)}>
+                      🔗 点击注册获取免费 Key →
+                    </button>
+                  </div>
+                  <div className="form-group">
+                    <label>粘贴 API Key</label>
+                    <input type="password" placeholder="粘贴你的 API Key..." value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)} className="input-field" />
+                  </div>
+                  <div className="form-group">
+                    <label>选择模型</label>
+                    <div className="model-select-list">
+                      {providers.find(p => p.id === selectedProvider)?.models.map((m) => (
+                        <button key={m.id}
+                          className={`model-select-btn ${selectedModel === m.id ? "active" : ""}`}
+                          onClick={() => setSelectedModel(m.id)}
+                        >
+                          {m.name}
+                          {m.is_free && <span className="badge-free-sm">免费</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          <button className="btn-start start modal-save"
+            onClick={handleSaveConfig} disabled={configSaving || !apiKeyInput.trim()}>
+            {configSaving ? "保存中..." : "✅ 保存并开始使用"}
+          </button>
+          {configStatus && <div className="config-status">{configStatus}</div>}
+        </div>
+      </div>
+    );
+  };
+
   // ===== Main App with Tabs =====
   return (
     <div className="app">
-      <Header running={running} loading={loading} phase={phase} statusClass={getStatusClass()} />
+      <Header running={running} phase={phase} statusClass={getStatusClass()} />
 
       {/* Tab Navigation */}
       <nav className="tab-nav">
@@ -353,11 +520,8 @@ function App() {
           { id: "settings" as TabId, label: "设置", icon: "⚙️" },
           { id: "logs" as TabId, label: "日志", icon: "📋" },
         ]).map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
+          <button key={tab.id} className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}>
             <span className="tab-icon">{tab.icon}</span>
             <span className="tab-label">{tab.label}</span>
           </button>
@@ -392,38 +556,46 @@ function App() {
               </div>
             </div>
 
-            <div className="control-panel">
-              <button
-                className={`btn-start ${running ? "stop" : "start"}`}
-                onClick={running ? handleStop : handleStart}
-                disabled={loading}
-              >
-                {loading ? "处理中..." : running ? "⏹ 停止服务" : "▶ 启动 OpenClaw"}
-              </button>
-              <div className="quick-actions">
-                <button
-                  className="btn-quick"
-                  onClick={() => window.open(`http://localhost:${servicePort}?token=openclaw-launcher-local`, "_blank")}
-                  disabled={!running}
-                >
-                  🌐 打开网页端
-                </button>
+            {/* Important info cards */}
+            <div className="info-cards">
+              <div className="info-card">
+                <div className="info-icon">🤖</div>
+                <div className="info-content">
+                  <div className="info-label">当前模型</div>
+                  <div className="info-value">{currentModelName}</div>
+                </div>
+                <button className="btn-link" onClick={() => setActiveTab("models")}>切换 →</button>
+              </div>
+              <div className="info-card">
+                <div className="info-icon">🔑</div>
+                <div className="info-content">
+                  <div className="info-label">API 提供商</div>
+                  <div className="info-value">{currentProviderName}</div>
+                </div>
+                <button className="btn-link" onClick={() => setActiveTab("models")}>配置 →</button>
+              </div>
+              <div className="info-card">
+                <div className="info-icon">📂</div>
+                <div className="info-content">
+                  <div className="info-label">工作区</div>
+                  <div className="info-value truncate">{workspacePath || "OpenClaw-Projects"}</div>
+                </div>
+                <button className="btn-link" onClick={() => setActiveTab("settings")}>更改 →</button>
               </div>
             </div>
 
-            {/* Compact recent logs */}
-            <div className="log-panel compact">
-              <div className="log-header">
-                <span>最近日志</span>
-                <button className="btn-link" onClick={() => setActiveTab("logs")}>查看全部 →</button>
-              </div>
-              <div className="log-content" style={{ maxHeight: 120 }}>
-                {logs.slice(-5).map((log, i) => (
-                  <div className="log-line" key={i}>
-                    <span className="log-time">{log.time}</span>
-                    <span className={`log-msg ${log.level}`}>{log.humanized || log.message}</span>
-                  </div>
-                ))}
+            {/* Controls */}
+            <div className="control-panel">
+              <button className={`btn-start ${running ? "stop" : "start"}`}
+                onClick={running ? handleStop : handleStart} disabled={loading}>
+                {loading ? "处理中..." : running ? "⏹ 停止服务" : "▶ 启动 OpenClaw"}
+              </button>
+              <div className="quick-actions">
+                <button className="btn-quick"
+                  onClick={() => window.open(`http://localhost:${servicePort}?token=openclaw-launcher-local`, "_blank")}
+                  disabled={!running}>
+                  🌐 打开网页端
+                </button>
               </div>
             </div>
           </div>
@@ -435,74 +607,44 @@ function App() {
             <h2 className="page-title">🤖 模型配置</h2>
             <p className="page-desc">选择 AI 模型提供商，配置 API Key 后即可开始使用。</p>
 
-            {/* Category tabs */}
             <div className="category-tabs">
               {Object.entries(CATEGORY_LABELS).map(([key, { label, icon }]) => (
-                <button
-                  key={key}
+                <button key={key}
                   className={`category-btn ${selectedCategory === key ? "active" : ""}`}
-                  onClick={() => { setSelectedCategory(key); setSelectedProvider(""); }}
-                >
+                  onClick={() => { setSelectedCategory(key); setSelectedProvider(""); setConfigStatus(""); }}>
                   {icon} {label}
                 </button>
               ))}
             </div>
 
-            {/* Custom relay station */}
             {selectedCategory === "custom" ? (
               <div className="custom-config">
                 <div className="form-group">
                   <label>API Base URL</label>
-                  <input
-                    type="url"
-                    placeholder="https://your-relay.com/v1"
-                    value={baseUrlInput}
-                    onChange={(e) => setBaseUrlInput(e.target.value)}
-                    className="input-field"
-                  />
+                  <input type="url" placeholder="https://your-relay.com/v1" value={baseUrlInput}
+                    onChange={(e) => setBaseUrlInput(e.target.value)} className="input-field" />
                 </div>
                 <div className="form-group">
                   <label>API Key</label>
-                  <input
-                    type="password"
-                    placeholder="sk-..."
-                    value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
-                    className="input-field"
-                  />
+                  <input type="password" placeholder="sk-..." value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)} className="input-field" />
                 </div>
                 <div className="form-group">
                   <label>模型 ID（可选）</label>
-                  <input
-                    type="text"
-                    placeholder="gpt-4o / deepseek-chat / ..."
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    className="input-field"
-                  />
+                  <input type="text" placeholder="gpt-4o / deepseek-chat / ..." value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)} className="input-field" />
                 </div>
-                <button
-                  className="btn-start start"
-                  onClick={handleSaveConfig}
-                  disabled={configSaving}
-                >
+                <button className="btn-start start" onClick={handleSaveConfig} disabled={configSaving}>
                   {configSaving ? "保存中..." : "💾 保存配置"}
                 </button>
                 {configStatus && <div className="config-status">{configStatus}</div>}
               </div>
             ) : (
-              /* Provider list */
               <div className="provider-list">
                 {filteredProviders.map((p) => (
-                  <div
-                    key={p.id}
+                  <div key={p.id}
                     className={`provider-card ${selectedProvider === p.id ? "selected" : ""}`}
-                    onClick={() => {
-                      setSelectedProvider(p.id);
-                      setBaseUrlInput(p.base_url);
-                      setSelectedModel(p.models[0]?.id || "");
-                    }}
-                  >
+                    onClick={() => { setSelectedProvider(p.id); setBaseUrlInput(p.base_url); setSelectedModel(p.models[0]?.id || ""); setConfigStatus(""); }}>
                     <div className="provider-header">
                       <span className="provider-name">{p.name}</span>
                       {p.category === "free" && <span className="badge-free">免费</span>}
@@ -518,45 +660,30 @@ function App() {
               </div>
             )}
 
-            {/* Config panel when provider selected */}
             {selectedProvider && selectedCategory !== "custom" && (
               <div className="config-panel">
                 <div className="config-panel-header">
                   <span>配置 {providers.find(p => p.id === selectedProvider)?.name}</span>
-                  <button className="btn-link" onClick={() => handleOpenRegister(selectedProvider)}>
-                    🔗 去注册
-                  </button>
+                  <button className="btn-link" onClick={() => handleOpenRegister(selectedProvider)}>🔗 去注册</button>
                 </div>
                 <div className="form-group">
                   <label>API Key</label>
-                  <input
-                    type="password"
-                    placeholder="粘贴你的 API Key..."
-                    value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
-                    className="input-field"
-                  />
+                  <input type="password" placeholder="粘贴你的 API Key..." value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)} className="input-field" />
                 </div>
                 <div className="form-group">
                   <label>选择模型</label>
                   <div className="model-select-list">
                     {providers.find(p => p.id === selectedProvider)?.models.map((m) => (
-                      <button
-                        key={m.id}
+                      <button key={m.id}
                         className={`model-select-btn ${selectedModel === m.id ? "active" : ""}`}
-                        onClick={() => setSelectedModel(m.id)}
-                      >
-                        {m.name}
-                        {m.is_free && <span className="badge-free-sm">免费</span>}
+                        onClick={() => setSelectedModel(m.id)}>
+                        {m.name}{m.is_free && <span className="badge-free-sm">免费</span>}
                       </button>
                     ))}
                   </div>
                 </div>
-                <button
-                  className="btn-start start"
-                  onClick={handleSaveConfig}
-                  disabled={configSaving || !apiKeyInput}
-                >
+                <button className="btn-start start" onClick={handleSaveConfig} disabled={configSaving || !apiKeyInput}>
                   {configSaving ? "保存中..." : "💾 保存并应用"}
                 </button>
                 {configStatus && <div className="config-status">{configStatus}</div>}
@@ -571,18 +698,34 @@ function App() {
             <h2 className="page-title">⚙️ 设置</h2>
             <div className="settings-group">
               <div className="setting-item">
-                <div className="setting-label">服务端口</div>
-                <div className="setting-value">{servicePort}</div>
-              </div>
-              <div className="setting-item">
-                <div className="setting-label">版本</div>
-                <div className="setting-value">v0.3.1</div>
-              </div>
-              <div className="setting-item">
-                <div className="setting-label">工作区</div>
-                <div className="setting-value" style={{ fontSize: 12 }}>
-                  {workspacePath || "~/Documents/OpenClaw-Projects"}
+                <div className="setting-left">
+                  <div className="setting-label">工作区目录</div>
+                  <div className="setting-value" style={{ fontSize: 12 }}>
+                    {workspacePath || "~/Documents/OpenClaw-Projects"}
+                  </div>
                 </div>
+                <button className="btn-quick" onClick={handleSwitchWorkspace}>📂 切换目录</button>
+              </div>
+              <div className="setting-item">
+                <div className="setting-left">
+                  <div className="setting-label">服务端口</div>
+                  <div className="setting-value">{servicePort}</div>
+                </div>
+              </div>
+              <div className="setting-item">
+                <div className="setting-left">
+                  <div className="setting-label">版本</div>
+                  <div className="setting-value">v0.3.1</div>
+                </div>
+              </div>
+              <div className="setting-item">
+                <div className="setting-left">
+                  <div className="setting-label">API Key</div>
+                  <div className="setting-value">
+                    {currentConfig?.has_api_key ? "✅ 已配置" : "❌ 未配置"}
+                  </div>
+                </div>
+                <button className="btn-quick" onClick={() => setShowKeyModal(true)}>🔑 重新配置</button>
               </div>
             </div>
           </div>
@@ -621,13 +764,16 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Mandatory API Key Modal (renders on top of everything) */}
+      {renderKeyModal()}
     </div>
   );
 }
 
 // ===== Header Component =====
-function Header({ running, loading, phase, statusClass }: {
-  running: boolean; loading: boolean; phase: string; statusClass: string;
+function Header({ running, phase, statusClass }: {
+  running: boolean; phase: string; statusClass: string;
 }) {
   return (
     <header className="header">

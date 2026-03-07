@@ -105,9 +105,21 @@ function App() {
       }
     );
 
+    // Heartbeat: detect if service process crashed
+    const unlistenHeartbeat = listen("service-heartbeat", async () => {
+      try {
+        const alive = await invoke<boolean>("is_service_running");
+        if (!alive && running) {
+          setRunning(false);
+          addLog("error", "⚠️ OpenClaw 服务进程已意外退出");
+        }
+      } catch { /* ignore */ }
+    });
+
     return () => {
       unlistenProgress.then((fn) => fn());
       unlistenLogs.then((fn) => fn());
+      unlistenHeartbeat.then((fn) => fn());
     };
   }, []);
 

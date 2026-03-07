@@ -249,11 +249,30 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
     }));
 
     // Find pnpm binary (installed globally alongside node)
-    let pnpm_cli = if cfg!(target_os = "windows") {
-        node_dir.join("node_modules").join("pnpm").join("bin").join("pnpm.cjs")
+    // Different npm versions install to different locations, so we search multiple candidates
+    let pnpm_candidates: Vec<PathBuf> = if cfg!(target_os = "windows") {
+        vec![
+            node_dir.join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"),
+            node_dir.join("node_modules").join("pnpm").join("dist").join("pnpm.cjs"),
+            node_dir.join("pnpm.cmd"), // npm might create a shim
+        ]
     } else {
-        node_dir.join("..").join("lib").join("node_modules").join("pnpm").join("bin").join("pnpm.cjs")
+        vec![
+            node_dir.join("..").join("lib").join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"),
+            node_dir.join("..").join("lib").join("node_modules").join("pnpm").join("dist").join("pnpm.cjs"),
+            node_dir.join("pnpm"), // npm might create a symlink
+        ]
     };
+
+    let pnpm_cli = pnpm_candidates.iter().find(|p| p.exists())
+        .ok_or_else(|| {
+            let searched = pnpm_candidates.iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect::<Vec<_>>()
+                .join("\n  ");
+            format!("pnpm 安装成功但找不到 pnpm.cjs，已搜索:\n  {}", searched)
+        })?
+        .clone();
 
     let mut install_cmd = std::process::Command::new(&node_bin);
     install_cmd.arg(&pnpm_cli)

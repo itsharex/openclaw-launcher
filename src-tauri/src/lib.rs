@@ -24,6 +24,7 @@ pub fn run() {
             openclaw::install_preset_skills,
             openclaw::setup_openclaw,
             // Service lifecycle
+            service::check_port_available,
             service::is_service_running,
             service::start_service,
             service::stop_service,

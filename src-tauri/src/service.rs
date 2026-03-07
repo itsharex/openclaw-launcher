@@ -1,10 +1,22 @@
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::io::{BufRead, BufReader};
+use std::net::TcpListener;
 use tauri::Emitter;
 
 use crate::environment;
 use crate::openclaw;
+
+/// Check if a port is available by trying to bind to it
+fn is_port_available(port: u16) -> bool {
+    TcpListener::bind(("127.0.0.1", port)).is_ok()
+}
+
+/// Check if port 3000 is available (exposed to frontend)
+#[tauri::command]
+pub fn check_port_available() -> Result<bool, String> {
+    Ok(is_port_available(3000))
+}
 
 /// Global state to hold the running OpenClaw child process
 pub struct ServiceState {
@@ -64,6 +76,15 @@ pub async fn start_service(
 
     if !openclaw_dir.join("package.json").exists() {
         return Err("OpenClaw 未安装，请先完成初始化".to_string());
+    }
+
+    // Check port 3000 availability
+    if !is_port_available(3000) {
+        let _ = app.emit("service-log", serde_json::json!({
+            "level": "warn",
+            "message": "⚠️ 端口 3000 已被占用，可能有其他服务在运行"
+        }));
+        return Err("端口 3000 已被占用。请关闭占用该端口的程序后重试，或检查是否已有 OpenClaw 实例在运行。".to_string());
     }
 
     let _ = app.emit("service-log", serde_json::json!({
@@ -128,6 +149,23 @@ pub async fn start_service(
                 }
             }
         });
+    }
+
+    // Spawn a thread to detect service crash (process exit)
+    {
+        let app_crash = app.clone();
+        let state_inner = state.inner().child.lock().unwrap().is_some();
+        if state_inner {
+            // Get the process ID to monitor
+            std::thread::spawn(move || {
+                loop {
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+                    // We can't access state from this thread, so just emit a heartbeat check
+                    // The frontend will call is_service_running to verify
+                    let _ = app_crash.emit("service-heartbeat", serde_json::json!({}));
+                }
+            });
+        }
     }
 
     if let Some(stderr) = stderr {

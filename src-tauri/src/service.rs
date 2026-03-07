@@ -71,13 +71,13 @@ pub async fn start_service(
         "message": "🚀 正在启动 OpenClaw 服务..."
     }));
 
-    // Build the start command
-    let npm_bin = environment::get_npm_binary()?;
+    // Build the start command — use OpenClaw's native entry point directly
+    // instead of `npm start` which triggers pnpm internally
     let node_dir = node_bin.parent().unwrap().to_path_buf();
+    let run_script = openclaw_dir.join("scripts").join("run-node.mjs");
 
     let mut cmd = Command::new(&node_bin);
-    cmd.arg(&npm_bin)
-        .arg("start")
+    cmd.arg(&run_script)
         .current_dir(&openclaw_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());

@@ -201,7 +201,6 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
     let mut cmd = std::process::Command::new(&node_bin);
     cmd.arg(&npm_bin)
         .arg("install")
-        .arg("--omit=dev")
         .current_dir(&openclaw_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -252,7 +251,6 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
             let mut retry_cmd = std::process::Command::new(&node_bin);
             retry_cmd.arg(&npm_bin)
                 .arg("install")
-                .arg("--omit=dev")
                 .arg("--registry=https://registry.npmmirror.com")
                 .current_dir(&openclaw_dir)
                 .stdout(Stdio::piped())

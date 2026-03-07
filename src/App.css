@@ -772,6 +772,28 @@ body {
   margin-top: 2px;
 }
 
+.setting-danger {
+  border-bottom-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+.btn-danger {
+  padding: 6px 16px;
+  border: 1px solid var(--accent-red);
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--accent-red);
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+  -webkit-app-region: no-drag;
+  white-space: nowrap;
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
 /* ===== Modal ===== */
 .modal-overlay {
   position: fixed;

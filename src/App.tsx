@@ -339,6 +339,23 @@ function App() {
     try { await invoke("open_provider_register", { providerId }); } catch { /* */ }
   };
 
+  const handleReset = async () => {
+    if (!confirm("确定要重置所有配置吗？这将清除 API Key 和模型设置，回到初始状态。")) return;
+    try {
+      const result = await invoke<string>("reset_config");
+      setCurrentConfig({ has_api_key: false, provider: null, model: null, base_url: null });
+      setApiKeyInput("");
+      setSelectedProvider("");
+      setSelectedModel("");
+      setBaseUrlInput("");
+      setConfigStatus("");
+      addLog("success", result);
+      setShowKeyModal(true);
+    } catch (err) {
+      addLog("error", `重置失败: ${err}`);
+    }
+  };
+
   const getStatusClass = () => {
     if (loading) return "loading";
     if (running) return "running";
@@ -726,6 +743,15 @@ function App() {
                   </div>
                 </div>
                 <button className="btn-quick" onClick={() => setShowKeyModal(true)}>🔑 重新配置</button>
+              </div>
+              <div className="setting-item setting-danger">
+                <div className="setting-left">
+                  <div className="setting-label">恢复出厂设置</div>
+                  <div className="setting-value" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    清除所有配置，回到初始状态（模拟新用户）
+                  </div>
+                </div>
+                <button className="btn-danger" onClick={handleReset}>🗑️ 一键重置</button>
               </div>
             </div>
           </div>

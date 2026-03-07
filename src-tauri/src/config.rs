@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 
-use crate::environment;
+
 
 /// Provider categories for the UI
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -363,6 +363,26 @@ pub fn open_provider_register(provider_id: String) -> Result<String, String> {
     } else {
         Err(format!("未知的提供商: {}", provider_id))
     }
+}
+
+/// Reset config — delete openclaw.json to simulate fresh install
+#[tauri::command]
+pub fn reset_config(app: tauri::AppHandle) -> Result<String, String> {
+    let openclaw_dir = crate::openclaw::get_openclaw_dir()?;
+    let config_path = openclaw_dir.join("openclaw.json");
+
+    if config_path.exists() {
+        std::fs::remove_file(&config_path)
+            .map_err(|e| format!("删除配置失败: {}", e))?;
+    }
+
+    let _ = app.emit("config-updated", serde_json::json!({
+        "provider": serde_json::Value::Null,
+        "hasKey": false,
+        "model": serde_json::Value::Null,
+    }));
+
+    Ok("✅ 配置已重置，请重新配置 API Key".to_string())
 }
 
 // ===== Helper functions =====

@@ -2469,7 +2469,7 @@ dependencies = [
 
 [[package]]
 name = "openclaw-launcher"
-version = "0.2.5"
+version = "0.2.7"
 dependencies = [
  "dirs",
  "futures-util",

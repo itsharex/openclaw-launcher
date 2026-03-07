@@ -43,57 +43,15 @@ pub struct CurrentConfig {
     pub base_url: Option<String>,
 }
 
-/// Return the list of supported providers grouped by category
+/// Return the list of supported providers
 #[tauri::command]
 pub fn get_providers() -> Vec<ProviderInfo> {
     vec![
-        // ===== 🆓 免费注册 =====
-        ProviderInfo {
-            id: "nvidia".into(),
-            name: "Nvidia (免费)".into(),
-            category: "free".into(),
-            base_url: "https://integrate.api.nvidia.com/v1".into(),
-            register_url: "https://build.nvidia.com/explore/discover".into(),
-            description: "免费注册，支持 Kimi K2.5、DeepSeek V3 等优质模型".into(),
-            api_type: "openai-completions".into(),
-            models: vec![
-                ModelInfo { id: "kimi-k2.5".into(), name: "Kimi K2.5".into(), provider: "nvidia".into(), is_free: true, context_window: 262144, max_tokens: 32768 },
-                ModelInfo { id: "deepseek-v3.2".into(), name: "DeepSeek V3.2".into(), provider: "nvidia".into(), is_free: true, context_window: 262144, max_tokens: 65536 },
-                ModelInfo { id: "glm-4.7".into(), name: "GLM 4.7".into(), provider: "nvidia".into(), is_free: true, context_window: 202752, max_tokens: 16384 },
-            ],
-        },
-        ProviderInfo {
-            id: "openrouter".into(),
-            name: "OpenRouter (免费额度)".into(),
-            category: "free".into(),
-            base_url: "https://openrouter.ai/api/v1".into(),
-            register_url: "https://openrouter.ai/keys".into(),
-            description: "免费注册，聚合多家模型，免费模型无限用".into(),
-            api_type: "openai-completions".into(),
-            models: vec![
-                ModelInfo { id: "google/gemini-2.0-flash-exp:free".into(), name: "Gemini 2.0 Flash (免费)".into(), provider: "openrouter".into(), is_free: true, context_window: 1000000, max_tokens: 65536 },
-                ModelInfo { id: "meta-llama/llama-4-maverick:free".into(), name: "Llama 4 Maverick (免费)".into(), provider: "openrouter".into(), is_free: true, context_window: 131072, max_tokens: 32768 },
-                ModelInfo { id: "qwen/qwen3-235b-a22b:free".into(), name: "Qwen3 235B (免费)".into(), provider: "openrouter".into(), is_free: true, context_window: 262144, max_tokens: 65536 },
-            ],
-        },
-        ProviderInfo {
-            id: "groq".into(),
-            name: "Groq (免费)".into(),
-            category: "free".into(),
-            base_url: "https://api.groq.com/openai/v1".into(),
-            register_url: "https://console.groq.com/keys".into(),
-            description: "免费注册，超快推理速度，适合编程".into(),
-            api_type: "openai-completions".into(),
-            models: vec![
-                ModelInfo { id: "llama-3.3-70b-versatile".into(), name: "Llama 3.3 70B".into(), provider: "groq".into(), is_free: true, context_window: 131072, max_tokens: 32768 },
-                ModelInfo { id: "gemma2-9b-it".into(), name: "Gemma2 9B".into(), provider: "groq".into(), is_free: true, context_window: 8192, max_tokens: 8192 },
-            ],
-        },
-        // ===== 💳 主流 Coding Plan =====
+        // ===== 🔥 Coding Plan 服务商 =====
         ProviderInfo {
             id: "bailian".into(),
             name: "阿里云百炼".into(),
-            category: "paid".into(),
+            category: "provider".into(),
             base_url: "https://coding.dashscope.aliyuncs.com/v1".into(),
             register_url: "https://bailian.console.aliyun.com/".into(),
             description: "聚合多家顶级模型，支持 Qwen3/Kimi/GLM/MiniMax".into(),
@@ -101,81 +59,53 @@ pub fn get_providers() -> Vec<ProviderInfo> {
             models: vec![
                 ModelInfo { id: "qwen3.5-plus".into(), name: "Qwen3.5 Plus".into(), provider: "bailian".into(), is_free: false, context_window: 1000000, max_tokens: 65536 },
                 ModelInfo { id: "qwen3-coder-plus".into(), name: "Qwen3 Coder Plus".into(), provider: "bailian".into(), is_free: false, context_window: 1000000, max_tokens: 65536 },
-                ModelInfo { id: "qwen3-coder-next".into(), name: "Qwen3 Coder Next".into(), provider: "bailian".into(), is_free: false, context_window: 262144, max_tokens: 65536 },
-                ModelInfo { id: "qwen3-max-2026-01-23".into(), name: "Qwen3 Max".into(), provider: "bailian".into(), is_free: false, context_window: 262144, max_tokens: 65536 },
-                ModelInfo { id: "kimi-k2.5".into(), name: "Kimi K2.5".into(), provider: "bailian".into(), is_free: false, context_window: 262144, max_tokens: 32768 },
-                ModelInfo { id: "glm-5".into(), name: "GLM 5".into(), provider: "bailian".into(), is_free: false, context_window: 202752, max_tokens: 16384 },
-                ModelInfo { id: "glm-4.7".into(), name: "GLM 4.7".into(), provider: "bailian".into(), is_free: false, context_window: 202752, max_tokens: 16384 },
                 ModelInfo { id: "MiniMax-M2.5".into(), name: "MiniMax M2.5".into(), provider: "bailian".into(), is_free: false, context_window: 204800, max_tokens: 131072 },
-            ],
-        },
-        ProviderInfo {
-            id: "bytedance".into(),
-            name: "字节方舟".into(),
-            category: "paid".into(),
-            base_url: "https://ark.cn-beijing.volces.com/api/v3".into(),
-            register_url: "https://www.volcengine.com/product/doubao".into(),
-            description: "首月 ¥9.9，支持 Kimi K2.5、DeepSeek V3.2 等".into(),
-            api_type: "openai-completions".into(),
-            models: vec![
-                ModelInfo { id: "doubao-kimi-k2.5".into(), name: "Kimi K2.5".into(), provider: "bytedance".into(), is_free: false, context_window: 262144, max_tokens: 32768 },
-                ModelInfo { id: "doubao-deepseek-v3.2".into(), name: "DeepSeek V3.2".into(), provider: "bytedance".into(), is_free: false, context_window: 262144, max_tokens: 65536 },
+                ModelInfo { id: "glm-5".into(), name: "GLM 5".into(), provider: "bailian".into(), is_free: false, context_window: 202752, max_tokens: 16384 },
+                ModelInfo { id: "kimi-k2.5".into(), name: "Kimi K2.5".into(), provider: "bailian".into(), is_free: false, context_window: 262144, max_tokens: 32768 },
+                ModelInfo { id: "glm-4.7".into(), name: "GLM 4.7".into(), provider: "bailian".into(), is_free: false, context_window: 202752, max_tokens: 16384 },
             ],
         },
         ProviderInfo {
             id: "zhipu".into(),
-            name: "智谱 GLM".into(),
-            category: "paid".into(),
-            base_url: "https://open.bigmodel.cn/api/paas/v4".into(),
+            name: "智谱 AI".into(),
+            category: "provider".into(),
+            base_url: "https://open.bigmodel.cn/api/paas/v4/".into(),
             register_url: "https://open.bigmodel.cn/".into(),
-            description: "GLM-4.7 / GLM-5 系列".into(),
+            description: "GLM 系列旗舰编程模型，SWE-bench 领先".into(),
             api_type: "openai-completions".into(),
             models: vec![
                 ModelInfo { id: "glm-5".into(), name: "GLM 5".into(), provider: "zhipu".into(), is_free: false, context_window: 202752, max_tokens: 16384 },
                 ModelInfo { id: "glm-4.7".into(), name: "GLM 4.7".into(), provider: "zhipu".into(), is_free: false, context_window: 202752, max_tokens: 16384 },
+                ModelInfo { id: "glm-4.6".into(), name: "GLM 4.6".into(), provider: "zhipu".into(), is_free: false, context_window: 202752, max_tokens: 16384 },
             ],
         },
         ProviderInfo {
-            id: "deepseek".into(),
-            name: "DeepSeek".into(),
-            category: "paid".into(),
-            base_url: "https://api.deepseek.com/v1".into(),
-            register_url: "https://platform.deepseek.com/api_keys".into(),
-            description: "按量付费，DeepSeek V3/R1 编程利器".into(),
+            id: "minimax".into(),
+            name: "MiniMax".into(),
+            category: "provider".into(),
+            base_url: "https://api.minimaxi.com/v1".into(),
+            register_url: "https://platform.minimaxi.com/".into(),
+            description: "M2.5 旗舰编程模型，专为 Agent 场景设计".into(),
             api_type: "openai-completions".into(),
             models: vec![
-                ModelInfo { id: "deepseek-chat".into(), name: "DeepSeek V3".into(), provider: "deepseek".into(), is_free: false, context_window: 131072, max_tokens: 65536 },
-                ModelInfo { id: "deepseek-reasoner".into(), name: "DeepSeek R1".into(), provider: "deepseek".into(), is_free: false, context_window: 131072, max_tokens: 65536 },
+                ModelInfo { id: "MiniMax-M2.5".into(), name: "MiniMax M2.5".into(), provider: "minimax".into(), is_free: false, context_window: 204800, max_tokens: 131072 },
+                ModelInfo { id: "MiniMax-M2.1".into(), name: "MiniMax M2.1".into(), provider: "minimax".into(), is_free: false, context_window: 204800, max_tokens: 131072 },
             ],
         },
+        // ===== 🔧 自定义中转站 =====
         ProviderInfo {
-            id: "openai".into(),
-            name: "OpenAI".into(),
-            category: "paid".into(),
-            base_url: "https://api.openai.com/v1".into(),
-            register_url: "https://platform.openai.com/api-keys".into(),
-            description: "按量付费，GPT-4o / o3 系列".into(),
+            id: "custom".into(),
+            name: "自定义中转站".into(),
+            category: "custom".into(),
+            base_url: "".into(),
+            register_url: "".into(),
+            description: "填入自有 API 地址和密钥，支持任何 OpenAI 兼容接口".into(),
             api_type: "openai-completions".into(),
-            models: vec![
-                ModelInfo { id: "gpt-4o".into(), name: "GPT-4o".into(), provider: "openai".into(), is_free: false, context_window: 128000, max_tokens: 16384 },
-                ModelInfo { id: "gpt-4o-mini".into(), name: "GPT-4o Mini".into(), provider: "openai".into(), is_free: false, context_window: 128000, max_tokens: 16384 },
-                ModelInfo { id: "o3-mini".into(), name: "o3 Mini".into(), provider: "openai".into(), is_free: false, context_window: 128000, max_tokens: 65536 },
-            ],
-        },
-        ProviderInfo {
-            id: "kimi".into(),
-            name: "Kimi Code (月之暗面)".into(),
-            category: "paid".into(),
-            base_url: "https://api.moonshot.cn/v1".into(),
-            register_url: "https://platform.moonshot.cn/console/api-keys".into(),
-            description: "Kimi 工具生态".into(),
-            api_type: "openai-completions".into(),
-            models: vec![
-                ModelInfo { id: "moonshot-v1-128k".into(), name: "Kimi v1 128K".into(), provider: "kimi".into(), is_free: false, context_window: 131072, max_tokens: 32768 },
-            ],
+            models: vec![],
         },
     ]
 }
+
 
 /// Get current OpenClaw config status
 #[tauri::command]

@@ -53,6 +53,7 @@ function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showRawLogs, setShowRawLogs] = useState(false);
   const [uptime, setUptime] = useState(0);
+  const [servicePort, setServicePort] = useState(18789);
   const [workspacePath, setWorkspacePath] = useState("");
   const logRef = useRef<HTMLDivElement>(null);
   const uptimeRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -116,10 +117,19 @@ function App() {
       } catch { /* ignore */ }
     });
 
+    // Listen for dynamic port assignment
+    const unlistenPort = listen<{ port: number }>(
+      "service-port",
+      (event) => {
+        setServicePort(event.payload.port);
+      }
+    );
+
     return () => {
       unlistenProgress.then((fn) => fn());
       unlistenLogs.then((fn) => fn());
       unlistenHeartbeat.then((fn) => fn());
+      unlistenPort.then((fn) => fn());
     };
   }, []);
 
@@ -226,7 +236,7 @@ function App() {
         <header className="header">
           <div className="header-left">
             <span className="header-logo">OpenClaw Launcher</span>
-            <span className="header-version">v0.2.9</span>
+            <span className="header-version">v0.3.0</span>
           </div>
           <span className={`status-dot ${getStatusClass()}`} />
         </header>
@@ -250,7 +260,7 @@ function App() {
         <header className="header">
           <div className="header-left">
             <span className="header-logo">OpenClaw Launcher</span>
-            <span className="header-version">v0.2.9</span>
+            <span className="header-version">v0.3.0</span>
           </div>
         </header>
         <div className="init-screen">
@@ -285,7 +295,7 @@ function App() {
       <header className="header">
         <div className="header-left">
           <span className="header-logo">OpenClaw Launcher</span>
-          <span className="header-version">v0.2.9</span>
+          <span className="header-version">v0.3.0</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
@@ -316,7 +326,7 @@ function App() {
             <div className="card-icon">🌐</div>
             <div className="card-info">
               <div className="card-label">访问地址</div>
-              <div className="card-value">{running ? "localhost:3000" : "--"}</div>
+              <div className="card-value">{running ? `localhost:${servicePort}` : "--"}</div>
             </div>
           </div>
         </div>
@@ -338,7 +348,7 @@ function App() {
           <div className="quick-actions">
             <button
               className="btn-quick"
-              onClick={() => window.open("http://localhost:3000", "_blank")}
+              onClick={() => window.open(`http://localhost:${servicePort}`, "_blank")}
               disabled={!running}
             >
               🌐 打开网页端

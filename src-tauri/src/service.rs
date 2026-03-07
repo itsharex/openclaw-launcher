@@ -15,10 +15,10 @@ fn is_port_available(port: u16) -> bool {
     TcpListener::bind(("127.0.0.1", port)).is_ok()
 }
 
-/// Check if port 3000 is available (exposed to frontend)
+/// Check if OpenClaw gateway port is available (exposed to frontend)
 #[tauri::command]
 pub fn check_port_available() -> Result<bool, String> {
-    Ok(is_port_available(3000))
+    Ok(is_port_available(18789))
 }
 
 /// Global state to hold the running OpenClaw child process
@@ -80,30 +80,45 @@ pub async fn start_service(
     if !openclaw_dir.join("package.json").exists() {
         return Err("OpenClaw 未安装，请先完成初始化".to_string());
     }
+    // Find an available port starting from 18789 (OpenClaw gateway default)
+    let mut chosen_port: u16 = 18789;
+    let mut found = false;
+    for port in 18789..=18799 {
+        if is_port_available(port) {
+            chosen_port = port;
+            found = true;
+            break;
+        }
+    }
+    if !found {
+        return Err("端口 18789-18799 全部被占用。请关闭其他 OpenClaw 实例后重试。".to_string());
+    }
 
-    // Check port 3000 availability
-    if !is_port_available(3000) {
+    if chosen_port != 18789 {
         let _ = app.emit("service-log", serde_json::json!({
             "level": "warn",
-            "message": "⚠️ 端口 3000 已被占用，可能有其他服务在运行"
+            "message": format!("⚠️ 默认端口 18789 已占用，自动切换到端口 {}", chosen_port)
         }));
-        return Err("端口 3000 已被占用。请关闭占用该端口的程序后重试，或检查是否已有 OpenClaw 实例在运行。".to_string());
     }
+
+    // Emit actual port to frontend for display
+    let _ = app.emit("service-port", serde_json::json!({ "port": chosen_port }));
 
     let _ = app.emit("service-log", serde_json::json!({
         "level": "info",
-        "message": "🚀 正在启动 OpenClaw 服务..."
+        "message": format!("🚀 正在启动 OpenClaw 服务 (端口 {})...", chosen_port)
     }));
 
     // Build the start command — use OpenClaw's native entry point directly
-    // instead of `npm start` which triggers pnpm internally
     let node_dir = node_bin.parent().unwrap().to_path_buf();
     let run_script = openclaw_dir.join("scripts").join("run-node.mjs");
 
     let mut cmd = Command::new(&node_bin);
     cmd.arg(&run_script)
-        .arg("gateway")  // Start the gateway HTTP server
-        .arg("--allow-unconfigured")  // Allow starting without `openclaw setup`
+        .arg("gateway")
+        .arg("--allow-unconfigured")
+        .arg("--port")
+        .arg(chosen_port.to_string())
         .current_dir(&openclaw_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -129,6 +144,7 @@ pub async fn start_service(
 
     if let Some(stdout) = stdout {
         let app_out = app_clone.clone();
+        let open_port = chosen_port;  // Copy for thread
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
             let mut browser_opened = false;
@@ -146,7 +162,7 @@ pub async fn start_service(
                                 "level": "success",
                                 "message": "🌐 正在打开浏览器..."
                             }));
-                            let _ = open::that("http://localhost:3000");
+                            let _ = open::that(format!("http://localhost:{}", open_port));
                         });
                     }
 

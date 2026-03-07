@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { ask } from "@tauri-apps/plugin-dialog";
 import "./App.css";
 
 // ===== Types =====
@@ -111,6 +110,7 @@ function App() {
 
   // Mandatory API Key modal
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   const addLog = (level: string, message: string) => {
     const now = new Date();
@@ -361,12 +361,12 @@ function App() {
     try { await invoke("open_provider_register", { providerId }); } catch { /* */ }
   };
 
-  const handleReset = async () => {
-    const confirmed = await ask(
-      "仅重置 API Key 和模型配置（openclaw.json 中的 models/agents 部分）。\n\n不会删除：\n• 对话历史和记忆\n• Agent 技能和书签\n• 工作区文件\n\n确定要重置吗？",
-      { title: "重置配置", kind: "warning" }
-    );
-    if (!confirmed) return;
+  const handleReset = () => {
+    setShowResetModal(true);
+  };
+
+  const confirmReset = async () => {
+    setShowResetModal(false);
     try {
       const result = await invoke<string>("reset_config");
       setCurrentConfig({ has_api_key: false, provider: null, model: null, base_url: null });
@@ -378,7 +378,7 @@ function App() {
       addLog("success", result);
       setShowKeyModal(true);
     } catch (err) {
-      addLog("error", `重置失败: ${err} `);
+      addLog("error", `重置失败: ${err}`);
     }
   };
 
@@ -455,7 +455,7 @@ function App() {
             {Object.entries(CATEGORY_LABELS).map(([key, { label, icon }]) => (
               <button
                 key={key}
-                className={`category - btn ${selectedCategory === key ? "active" : ""} `}
+                className={`category-btn ${selectedCategory === key ? "active" : ""}`}
                 onClick={() => { setSelectedCategory(key); setSelectedProvider(""); setConfigStatus(""); }}
               >
                 {icon} {label}
@@ -487,7 +487,7 @@ function App() {
                 {filteredProviders.map((p) => (
                   <div
                     key={p.id}
-                    className={`provider - card ${selectedProvider === p.id ? "selected" : ""} `}
+                    className={`provider-card ${selectedProvider === p.id ? "selected" : ""}`}
                     onClick={() => {
                       setSelectedProvider(p.id);
                       setBaseUrlInput(p.base_url);
@@ -526,7 +526,7 @@ function App() {
                     <div className="model-select-list">
                       {providers.find(p => p.id === selectedProvider)?.models.map((m) => (
                         <button key={m.id}
-                          className={`model - select - btn ${selectedModel === m.id ? "active" : ""} `}
+                          className={`model-select-btn ${selectedModel === m.id ? "active" : ""}`}
                           onClick={() => setSelectedModel(m.id)}
                         >
                           {m.name}
@@ -563,7 +563,7 @@ function App() {
           { id: "settings" as TabId, label: "设置", icon: "⚙️" },
           { id: "logs" as TabId, label: "日志", icon: "📋" },
         ]).map((tab) => (
-          <button key={tab.id} className={`tab - btn ${activeTab === tab.id ? "active" : ""} `}
+          <button key={tab.id} className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
             onClick={() => setActiveTab(tab.id)}>
             <span className="tab-icon">{tab.icon}</span>
             <span className="tab-label">{tab.label}</span>
@@ -576,7 +576,7 @@ function App() {
         {activeTab === "dashboard" && (
           <div className="dashboard">
             <div className="status-cards">
-              <div className={`status - card main - card ${running ? "active" : ""} `}>
+              <div className={`status-card main-card ${running ? "active" : ""}`}>
                 <div className="card-icon">{running ? "🟢" : "⚫"}</div>
                 <div className="card-info">
                   <div className="card-label">服务状态</div>
@@ -629,7 +629,7 @@ function App() {
 
             {/* Controls */}
             <div className="control-panel">
-              <button className={`btn - start ${running ? "stop" : "start"} `}
+              <button className={`btn-start ${running ? "stop" : "start"}`}
                 onClick={running ? handleStop : handleStart} disabled={loading}>
                 {loading ? "处理中..." : running ? "⏹ 停止服务" : "▶ 启动 OpenClaw"}
               </button>
@@ -822,6 +822,33 @@ function App() {
           )
         }
       </div >
+
+      {/* Reset Confirmation Modal */}
+      {showResetModal && (
+        <div className="modal-overlay">
+          <div className="modal-box" style={{ maxWidth: 420 }}>
+            <div className="modal-title">⚠️ 重置配置</div>
+            <div className="modal-desc" style={{ textAlign: "left" }}>
+              <p style={{ marginBottom: 12 }}>仅重置 API Key 和模型配置（openclaw.json 中的 models/agents 部分）。</p>
+              <p style={{ color: "var(--accent-green)", marginBottom: 4 }}>✅ 不会删除：</p>
+              <ul style={{ paddingLeft: 20, marginBottom: 12, color: "var(--text-secondary)" }}>
+                <li>对话历史和记忆</li>
+                <li>Agent 技能和书签</li>
+                <li>工作区文件</li>
+              </ul>
+              <p style={{ color: "var(--accent-red)", marginBottom: 4 }}>🗑️ 将清除：</p>
+              <ul style={{ paddingLeft: 20, color: "var(--text-secondary)" }}>
+                <li>API Key 配置</li>
+                <li>模型选择和默认模型</li>
+              </ul>
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
+              <button className="btn-secondary" onClick={() => setShowResetModal(false)}>取消</button>
+              <button className="btn-danger" onClick={confirmReset}>确认重置</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mandatory API Key Modal (renders on top of everything) */}
       {renderKeyModal()}

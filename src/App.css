@@ -794,6 +794,25 @@ body {
   background: rgba(239, 68, 68, 0.2);
 }
 
+.btn-secondary {
+  padding: 6px 16px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+  -webkit-app-region: no-drag;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
 /* ===== Modal ===== */
 .modal-overlay {
   position: fixed;

@@ -40,6 +40,8 @@
 body {
   overflow: hidden;
   height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ===== Custom Scrollbar ===== */
@@ -905,20 +907,24 @@ body {
   border: 1px solid var(--border-subtle);
   background: var(--bg-card);
   color: var(--text-primary);
-  border-radius: 20px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 13px;
-  transition: all 0.2s;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   -webkit-app-region: no-drag;
 }
 
 .btn-quick:hover {
-  border-color: var(--accent-blue);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--bg-card-hover);
+  transform: translateY(-1px);
 }
 
 .btn-quick:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }
 
 .btn-link {
@@ -931,6 +937,7 @@ body {
   text-decoration: underline;
   text-decoration-color: transparent;
   transition: text-decoration-color 0.2s;
+  padding: 0;
 }
 
 .btn-link:hover {
@@ -1259,13 +1266,14 @@ body {
 .modal-title {
   font-size: 18px;
   font-weight: 700;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
 }
 
 .modal-desc {
   color: var(--text-secondary);
   font-size: 13px;
-  margin-bottom: 14px;
+  margin-bottom: 24px;
   line-height: 1.6;
 }
 

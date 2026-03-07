@@ -6,6 +6,11 @@ use tauri::Emitter;
 
 use crate::environment;
 
+/// On Windows, hide the CMD window when spawning child processes
+/// so users can't accidentally kill them by closing the window
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 const OPENCLAW_REPO: &str = "openclaw/openclaw";
 const OPENCLAW_DIR_NAME: &str = "openclaw-engine";
 
@@ -229,6 +234,9 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
         .stderr(Stdio::piped())
         .env("PATH", &sandbox_path);
 
+    #[cfg(target_os = "windows")]
+    pnpm_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+
     if use_mirror {
         pnpm_cmd.arg("--registry=https://registry.npmmirror.com");
     }
@@ -281,6 +289,9 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .env("PATH", &sandbox_path);
+
+    #[cfg(target_os = "windows")]
+    install_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
 
     if use_mirror {
         let _ = app.emit("setup-progress", serde_json::json!({

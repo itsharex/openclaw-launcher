@@ -4,6 +4,9 @@ use std::io::{BufRead, BufReader};
 use std::net::TcpListener;
 use tauri::Emitter;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 use crate::environment;
 use crate::openclaw;
 
@@ -103,6 +106,9 @@ pub async fn start_service(
         .current_dir(&openclaw_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
 
     // Set PATH to include sandboxed node
     if let Some(current_path) = std::env::var_os("PATH") {

@@ -273,7 +273,7 @@ function App() {
       <header className="header">
         <div className="header-left">
           <span className="header-logo">OpenClaw Launcher</span>
-          <span className="header-version">v0.1.0</span>
+          <span className="header-version">v0.2.3</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
@@ -307,6 +307,11 @@ function App() {
               <div className="card-value">{running ? "localhost:3000" : "--"}</div>
             </div>
           </div>
+        </div>
+
+        {/* Free model hint */}
+        <div className="free-model-hint">
+          💡 当前使用 OpenRouter 免费模型，回复可能较慢。配置自己的 API Key 可获得更快速度和更强模型。
         </div>
 
         {/* Controls */}

@@ -115,18 +115,16 @@ pub async fn start_service(
 
     // Pre-configure auth token so the web UI can connect
     let token = "openclaw-launcher-local";
-    {
+    let run_config = |args: &[&str]| {
         let mut config_cmd = Command::new(&node_bin);
-        config_cmd.arg(&run_script)
-            .arg("config")
-            .arg("set")
-            .arg("gateway.auth.token")
-            .arg(token)
-            .current_dir(&openclaw_dir)
+        config_cmd.arg(&run_script);
+        for arg in args {
+            config_cmd.arg(arg);
+        }
+        config_cmd.current_dir(&openclaw_dir)
             .stdout(Stdio::null())
             .stderr(Stdio::null());
 
-        // Set PATH for config command too
         if let Some(current_path) = std::env::var_os("PATH") {
             let mut paths = std::env::split_paths(&current_path).collect::<Vec<_>>();
             paths.insert(0, node_bin.parent().unwrap().to_path_buf());
@@ -137,8 +135,13 @@ pub async fn start_service(
         #[cfg(target_os = "windows")]
         config_cmd.creation_flags(0x08000000);
 
-        let _ = config_cmd.output(); // Best-effort, don't fail if this doesn't work
-    }
+        let _ = config_cmd.output();
+    };
+
+    // Set auth token
+    run_config(&["config", "set", "gateway.auth.token", token]);
+    // Set default model to OpenRouter free model
+    run_config(&["config", "set", "agents.defaults.model", "openrouter/google/gemini-2.0-flash-exp:free"]);
 
     let mut cmd = Command::new(&node_bin);
     cmd.arg(&run_script)

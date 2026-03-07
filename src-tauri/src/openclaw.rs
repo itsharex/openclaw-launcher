@@ -334,11 +334,12 @@ async fn test_url_reachable(url: &str) -> bool {
     client.head(url).send().await.is_ok()
 }
 
-/// Inject default openclaw.json configuration (non-destructive)
+/// Inject default openclaw.json configuration with OpenRouter free models (non-destructive)
+/// This enables "open and chat" without any API key setup
 #[tauri::command]
 pub fn inject_default_config(app: tauri::AppHandle) -> Result<String, String> {
     let openclaw_dir = get_openclaw_dir()?;
-    let config_path = openclaw_dir.join(".openclaw.json");
+    let config_path = openclaw_dir.join("openclaw.json");
 
     if config_path.exists() {
         return Ok("Config already exists, skipping".to_string());
@@ -352,19 +353,29 @@ pub fn inject_default_config(app: tauri::AppHandle) -> Result<String, String> {
     // Ensure workspace directory exists
     let _ = std::fs::create_dir_all(&workspace);
 
-    let config = serde_json::json!({
-        "workspace": workspace.to_string_lossy(),
-        "server": {
-            "port": 3000,
-            "host": "localhost"
-        },
-        "language": "zh-CN",
-        "autoOpen": true
-    });
+    // OpenClaw's actual JSON5 config format with OpenRouter free models
+    // Free models don't require an API key
+    let config_content = format!(r#"{{
+  // OpenClaw Launcher 自动生成的配置
+  // 使用 OpenRouter 免费模型，开箱即用，无需 API Key
+  "agents": {{
+    "defaults": {{
+      "models": [
+        "openrouter/google/gemini-2.0-flash-exp:free",
+        "openrouter/meta-llama/llama-4-maverick:free",
+        "openrouter/microsoft/phi-4-reasoning:free",
+        "openrouter/qwen/qwen3-235b-a22b:free"
+      ]
+    }}
+  }},
+  "sandbox": {{
+    "paths": [
+      "{}"
+    ]
+  }}
+}}"#, workspace.to_string_lossy().replace('\\', "\\\\"));
 
-    let content = serde_json::to_string_pretty(&config)
-        .map_err(|e| format!("序列化配置失败: {}", e))?;
-    std::fs::write(&config_path, content)
+    std::fs::write(&config_path, &config_content)
         .map_err(|e| format!("写入配置文件失败: {}", e))?;
 
     let _ = app.emit("setup-progress", serde_json::json!({
@@ -376,50 +387,25 @@ pub fn inject_default_config(app: tauri::AppHandle) -> Result<String, String> {
     Ok(format!("Config created at: {}", config_path.display()))
 }
 
-/// Inject default models.json with a default model (non-destructive)
+/// Inject default models.json (kept for backwards compatibility, non-destructive)
 #[tauri::command]
 pub fn inject_default_models(app: tauri::AppHandle) -> Result<String, String> {
-    let openclaw_dir = get_openclaw_dir()?;
-    let models_path = openclaw_dir.join("models.json");
-
-    if models_path.exists() {
-        return Ok("Models config already exists, skipping".to_string());
-    }
-
-    let models = serde_json::json!({
-        "models": [
-            {
-                "id": "default",
-                "name": "默认模型",
-                "provider": "openai-compatible",
-                "apiBase": "",
-                "apiKey": "",
-                "model": "gpt-4o-mini",
-                "enabled": true
-            }
-        ],
-        "defaultModel": "default"
-    });
-
-    let content = serde_json::to_string_pretty(&models)
-        .map_err(|e| format!("序列化模型配置失败: {}", e))?;
-    std::fs::write(&models_path, content)
-        .map_err(|e| format!("写入模型配置失败: {}", e))?;
-
+    // Models are now configured in openclaw.json directly
+    // This function is kept for API compatibility
     let _ = app.emit("setup-progress", serde_json::json!({
         "stage": "models_inject",
-        "message": "✅ 模型配置已生成！首次使用请配置你的 API Key",
+        "message": "✅ 模型配置已就绪 (OpenRouter 免费模型，开箱即用！)",
         "percent": 97
     }));
 
-    Ok(format!("Models config created at: {}", models_path.display()))
+    Ok("Models configured via openclaw.json".to_string())
 }
 
 /// Check if config has been injected
 #[tauri::command]
 pub fn check_config_exists() -> Result<bool, String> {
     let dir = get_openclaw_dir()?;
-    Ok(dir.join(".openclaw.json").exists())
+    Ok(dir.join("openclaw.json").exists())
 }
 
 /// Install preset skills into OpenClaw's skills directory

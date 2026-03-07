@@ -113,39 +113,8 @@ pub async fn start_service(
     let node_dir = node_bin.parent().unwrap().to_path_buf();
     let run_script = openclaw_dir.join("scripts").join("run-node.mjs");
 
-    // Pre-configure auth token so the web UI can connect
+    // Auth token for web UI — injected via env var (also set in openclaw.json)
     let token = "openclaw-launcher-local";
-    let home_dir = dirs::home_dir().ok_or("Cannot determine home directory")?;
-    let openclaw_home = home_dir.join(".openclaw");
-    let run_config = |args: &[&str]| {
-        let mut config_cmd = Command::new(&node_bin);
-        config_cmd.arg(&run_script);
-        for arg in args {
-            config_cmd.arg(arg);
-        }
-        config_cmd.current_dir(&openclaw_dir)
-            .env("OPENCLAW_HOME", &openclaw_home)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-
-        if let Some(current_path) = std::env::var_os("PATH") {
-            let mut paths = std::env::split_paths(&current_path).collect::<Vec<_>>();
-            paths.insert(0, node_bin.parent().unwrap().to_path_buf());
-            let new_path = std::env::join_paths(paths).unwrap_or_default();
-            config_cmd.env("PATH", new_path);
-        }
-
-        #[cfg(target_os = "windows")]
-        config_cmd.creation_flags(0x08000000);
-
-        let _ = config_cmd.output();
-    };
-
-    // Set auth token
-    run_config(&["config", "set", "gateway.auth.token", token]);
-    // NOTE: Do NOT set agents.defaults.model here — it's already configured
-    // by save_api_config in openclaw.json. Setting it here would OVERWRITE
-    // the user's chosen model every time the service starts.
 
     let mut cmd = Command::new(&node_bin);
     cmd.arg(&run_script)
@@ -156,7 +125,6 @@ pub async fn start_service(
         .current_dir(&openclaw_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .env("OPENCLAW_HOME", &openclaw_home)
         .env("OPENCLAW_GATEWAY_AUTH_TOKEN", token);
 
     #[cfg(target_os = "windows")]

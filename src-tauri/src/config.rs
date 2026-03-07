@@ -277,7 +277,6 @@ pub fn save_api_config(
     let config_content = format!(
         r#"{{
   "models": {{
-    "mode": "replace",
     "providers": {{
       "{}": {{
         "baseUrl": "{}",

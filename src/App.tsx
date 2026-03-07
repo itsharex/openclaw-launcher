@@ -111,6 +111,7 @@ function App() {
   // Mandatory API Key modal
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showModelSwitchModal, setShowModelSwitchModal] = useState(false);
 
   const addLog = (level: string, message: string) => {
     const now = new Date();
@@ -344,7 +345,6 @@ function App() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSetModel = async (modelId: string) => {
     try {
       const result = await invoke<string>("set_default_model", { modelId });
@@ -607,7 +607,7 @@ function App() {
                   <div className="info-label">当前模型</div>
                   <div className="info-value">{currentModelName}</div>
                 </div>
-                <button className="btn-link" onClick={() => setActiveTab("models")}>切换 →</button>
+                <button className="btn-link" onClick={() => setShowModelSwitchModal(true)}>切换 →</button>
               </div>
               <div className="info-card">
                 <div className="info-icon">🔑</div>
@@ -708,7 +708,7 @@ function App() {
                 <div className="config-panel">
                   <div className="config-panel-header">
                     <span>配置 {providers.find(p => p.id === selectedProvider)?.name}</span>
-                    <button className="btn-link" onClick={() => handleOpenRegister(selectedProvider)}>🔗 去注册</button>
+                    <button className="btn-link" onClick={() => handleOpenRegister(selectedProvider)}>🔗 {selectedCategory === "free" ? "去注册获取免费 Key" : "去购买"}</button>
                   </div>
                   <div className="form-group">
                     <label>API Key</label>
@@ -822,6 +822,40 @@ function App() {
           )
         }
       </div >
+
+      {/* Model Switch Modal */}
+      {showModelSwitchModal && (
+        <div className="modal-overlay" onClick={() => setShowModelSwitchModal(false)}>
+          <div className="modal-box" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">🔄 切换模型</div>
+            <div className="modal-desc">选择要使用的 AI 模型</div>
+            {currentConfig?.provider ? (
+              <div className="model-switch-list" style={{ marginTop: 12 }}>
+                {providers.find(p => p.id === currentConfig.provider)?.models.map((m) => (
+                  <button
+                    key={m.id}
+                    className={`model-switch-item ${currentConfig.model === m.id ? "active" : ""}`}
+                    onClick={async () => {
+                      await handleSetModel(m.id);
+                      setShowModelSwitchModal(false);
+                    }}
+                  >
+                    <span className="model-switch-name">{m.name}</span>
+                    {currentConfig.model === m.id && <span className="model-switch-badge">当前</span>}
+                  </button>
+                )) || <div style={{ color: "var(--text-secondary)" }}>暂无可用模型</div>}
+              </div>
+            ) : (
+              <div style={{ color: "var(--text-secondary)", marginTop: 12 }}>
+                请先在「模型」标签页配置 API 提供商
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button className="btn-secondary" onClick={() => setShowModelSwitchModal(false)}>关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reset Confirmation Modal */}
       {showResetModal && (

@@ -85,7 +85,7 @@ pub fn get_providers() -> Vec<ProviderInfo> {
             api_type: "openai-completions".into(),
             models: vec![
                 ModelInfo { id: "deepseek-ai/DeepSeek-V3".into(), name: "DeepSeek V3".into(), provider: "siliconflow".into(), is_free: true, context_window: 131072, max_tokens: 65536 },
-                ModelInfo { id: "Qwen/Qwen2.5-72B-Instruct".into(), name: "Qwen2.5 72B".into(), provider: "siliconflow".into(), is_free: true, context_window: 131072, max_tokens: 32768 },
+                ModelInfo { id: "Qwen/Qwen3-8B".into(), name: "Qwen3 8B".into(), provider: "siliconflow".into(), is_free: true, context_window: 131072, max_tokens: 32768 },
             ],
         },
         // ===== 🔥 Coding Plan 服务商 =====

@@ -615,7 +615,7 @@ function App() {
                   <div className="info-label">API 提供商</div>
                   <div className="info-value">{currentProviderName}</div>
                 </div>
-                <button className="btn-link" onClick={() => setActiveTab("models")}>配置 →</button>
+                <button className="btn-link" onClick={() => setShowKeyModal(true)}>配置 →</button>
               </div>
               <div className="info-card">
                 <div className="info-icon">📂</div>

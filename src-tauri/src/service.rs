@@ -148,7 +148,8 @@ pub async fn start_service(
         .arg(chosen_port.to_string())
         .current_dir(&openclaw_dir)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stderr(Stdio::piped())
+        .env("OPENCLAW_GATEWAY_AUTH_TOKEN", token);
 
     #[cfg(target_os = "windows")]
     cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
@@ -189,7 +190,7 @@ pub async fn start_service(
                                 "level": "success",
                                 "message": "🌐 正在打开浏览器..."
                             }));
-                            let _ = open::that(format!("http://localhost:{}", open_port));
+                            let _ = open::that(format!("http://localhost:{}?token=openclaw-launcher-local", open_port));
                         });
                     }
 

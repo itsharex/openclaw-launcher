@@ -11,6 +11,134 @@ pub fn get_sandbox_dir() -> Result<PathBuf, String> {
     Ok(sandbox)
 }
 
+/// Check if available disk space is sufficient (in MB)
+pub fn check_disk_space(path: &PathBuf, required_mb: u64) -> Result<bool, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        use std::ffi::OsStr;
+        // Use GetDiskFreeSpaceExW on Windows
+        let wide_path: Vec<u16> = OsStr::new(path.to_string_lossy().as_ref())
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        let mut free_bytes: u64 = 0;
+        unsafe {
+            // kernel32.dll GetDiskFreeSpaceExW
+            #[link(name = "kernel32")]
+            extern "system" {
+                fn GetDiskFreeSpaceExW(
+                    lpDirectoryName: *const u16,
+                    lpFreeBytesAvailableToCaller: *mut u64,
+                    lpTotalNumberOfBytes: *mut u64,
+                    lpTotalNumberOfFreeBytes: *mut u64,
+                ) -> i32;
+            }
+            let mut total: u64 = 0;
+            let mut total_free: u64 = 0;
+            let ret = GetDiskFreeSpaceExW(
+                wide_path.as_ptr(),
+                &mut free_bytes,
+                &mut total,
+                &mut total_free,
+            );
+            if ret == 0 {
+                return Ok(true); // Can't determine, assume OK
+            }
+        }
+        let free_mb = free_bytes / (1024 * 1024);
+        Ok(free_mb >= required_mb)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Use statvfs on Unix
+        use std::ffi::CString;
+        let path_str = path.to_string_lossy().to_string();
+        let c_path = CString::new(path_str).map_err(|_| "Invalid path".to_string())?;
+        unsafe {
+            #[repr(C)]
+            struct Statvfs {
+                f_bsize: u64,
+                f_frsize: u64,
+                f_blocks: u64,
+                f_bfree: u64,
+                f_bavail: u64,
+                // ... other fields we don't need
+                _padding: [u64; 6],
+            }
+            extern "C" {
+                fn statvfs(path: *const i8, buf: *mut Statvfs) -> i32;
+            }
+            let mut stat = std::mem::zeroed::<Statvfs>();
+            if statvfs(c_path.as_ptr(), &mut stat) != 0 {
+                return Ok(true); // Can't determine, assume OK
+            }
+            let free_mb = (stat.f_bavail * stat.f_frsize) / (1024 * 1024);
+            Ok(free_mb >= required_mb)
+        }
+    }
+}
+
+/// Check if sandbox path contains non-ASCII characters (e.g. Chinese username)
+/// and warn the user. Returns a warning message if path has issues, None otherwise.
+pub fn check_path_compatibility(path: &PathBuf) -> Option<String> {
+    let path_str = path.to_string_lossy();
+    
+    // Check for non-ASCII characters (Chinese usernames etc.)
+    if path_str.chars().any(|c| !c.is_ascii()) {
+        return Some(format!(
+            "⚠️ 安装路径包含非 ASCII 字符: {}\n\
+             部分 npm 包可能不支持中文路径，如遇到问题请更改 Windows 用户名或设置 OPENCLAW_HOME 环境变量。",
+            path_str
+        ));
+    }
+    
+    // Check for path length on Windows (260 char limit)
+    #[cfg(target_os = "windows")]
+    if path_str.len() > 200 {
+        return Some(format!(
+            "⚠️ 安装路径过长 ({} 字符)，可能超出 Windows 260 字符限制。\n\
+             建议缩短路径或启用 Windows 长路径支持。",
+            path_str.len()
+        ));
+    }
+    
+    None
+}
+
+/// Enable long path support on Windows via registry (best-effort)
+#[cfg(target_os = "windows")]
+pub fn enable_windows_long_paths() {
+    use std::process::Command;
+    // Try to enable LongPathsEnabled in registry (requires admin, best-effort)
+    let _ = Command::new("reg")
+        .args(["add", "HKLM\\SYSTEM\\CurrentControlSet\\Control\\FileSystem", 
+               "/v", "LongPathsEnabled", "/t", "REG_DWORD", "/d", "1", "/f"])
+        .output();
+}
+
+/// Convert a raw network error into a user-friendly Chinese message
+pub fn humanize_network_error(err: &str) -> String {
+    let err_lower = err.to_lowercase();
+    if err_lower.contains("dns") || err_lower.contains("resolve") {
+        "❌ DNS 解析失败：无法找到服务器。请检查网络连接和 DNS 设置。".to_string()
+    } else if err_lower.contains("timeout") || err_lower.contains("timed out") {
+        "❌ 连接超时：服务器响应太慢。请检查网络或稍后重试。".to_string()
+    } else if err_lower.contains("connection refused") {
+        "❌ 连接被拒绝：服务器未响应。可能是防火墙或代理设置问题。".to_string()
+    } else if err_lower.contains("connection reset") || err_lower.contains("econnreset") {
+        "❌ 连接被重置：网络不稳定。请检查 VPN/代理或稍后重试。".to_string()
+    } else if err_lower.contains("ssl") || err_lower.contains("tls") || err_lower.contains("certificate") {
+        "❌ SSL/TLS 证书错误：请检查系统时间是否正确，或代理是否干扰了 HTTPS。".to_string()
+    } else if err_lower.contains("no such host") || err_lower.contains("not found") {
+        "❌ 找不到服务器：请确认已连接到互联网。".to_string()
+    } else if err_lower.contains("network") || err_lower.contains("socket") {
+        format!("❌ 网络错误：{}\n请检查网络连接后重试。", err)
+    } else {
+        format!("❌ 下载失败：{}\n请检查网络连接后重试。", err)
+    }
+}
+
 /// Get the path where Node.js portable should be extracted
 pub fn get_node_dir() -> Result<PathBuf, String> {
     Ok(get_sandbox_dir()?.join("node"))
@@ -170,7 +298,7 @@ pub async fn download_and_install_node(app: tauri::AppHandle) -> Result<String, 
     // Step 4: Download the archive
     let response = reqwest::get(download_url)
         .await
-        .map_err(|e| format!("Download failed: {}. Please check your network.", e))?;
+        .map_err(|e| humanize_network_error(&e.to_string()))?;
 
     let total_size = response.content_length().unwrap_or(0);
     let mut downloaded: u64 = 0;
@@ -182,7 +310,7 @@ pub async fn download_and_install_node(app: tauri::AppHandle) -> Result<String, 
         .map_err(|e| format!("Failed to create archive file: {}", e))?;
 
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("Download stream error: {}", e))?;
+        let chunk = chunk.map_err(|e| humanize_network_error(&e.to_string()))?;
         file.write_all(&chunk).map_err(|e| format!("Write error: {}", e))?;
         downloaded += chunk.len() as u64;
 

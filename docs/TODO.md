@@ -7,66 +7,90 @@
 - [x] 建立阶段性开发文档 (`/docs/phases/*.md`)
 - [x] 建立并维护此全局任务表 (`/docs/TODO.md`)
 
-## 🛠️ Phase 1: MVP 核心安装器 (参考 /docs/phases/phase1_mvp.md)
-- [x] 搭建 Tauri + React/Vue 基础项目脚手架 ✅ (570 crates compiled, 0 errors, .deb/.rpm OK)
-- [x] 实现 Rust 侧 Node.js 下载与本地释放 (AppData 沙盒机制) ✅ (667 crates, 0 errors)
-- [x] 实现源码 ZIP 网络拉取与解压 (智能切换镜像源) ✅ (GitHub + 2 mirrors fallback)
-- [x] 实现局部环境变量下的 `npm install` ✅ (Taobao mirror autoswitch + retry)
-- [x] 实现基础控制台 UI (启停服务、读取基础日志) ✅ (React + Rust full-stack, 0 errors)
-- [ ] [Phase 1 测试]: 在纯净版 Windows/Mac 虚拟机无报错启动 OpenClaw。
+## 🛠️ Phase 1: MVP 核心安装器
+- [x] 搭建 Tauri + React 基础项目脚手架 ✅
+- [x] 实现 Rust 侧 Node.js 下载与本地释放 ✅
+- [x] 实现源码 ZIP 网络拉取与解压 ✅
+- [x] 实现 `npm install` + 镜像自动切换 ✅
+- [x] 实现基础控制台 UI ✅
+- [ ] [Phase 1 测试]: 纯净版 Windows/Mac 虚拟机无报错启动
 
-## 🎨 Phase 2: "Aha Moment" 体验改造 (参考 /docs/phases/phase2_experience.md)
-- [x] [P0] 配置注入: 自动生成 `openclaw.json` (非破坏性) ✅
-- [x] [P0] 配置注入: 自动生成 `models.json` (预置免费 API Key) ✅
-- [x] [P1] 工作区向导: 首次启动弹出文件夹选择对话框 ✅
-- [x] [P1] 启动后自动打开浏览器 (`localhost:3000`) ✅
-- [x] [P2] UI 升级: 状态大卡片 (运行时长、模型、工作区路径) ✅
-- [x] [P2] 人话日志: 日志翻译层 + 原始/人话切换 ✅
-- [x] [P3] 预置技能包: 内置 `skill-creator` 和 `skill-finder` ✅
-- [ ] [Phase 2 测试]: 小白用户双击安装 → 浏览器弹出 → 直接对话
+## 🎨 Phase 2: "Aha Moment" 体验改造
+- [x] 配置注入: 自动生成 `openclaw.json` ✅
+- [x] 配置注入: 自动生成 `models.json` ✅
+- [x] 工作区向导: 首次启动弹出文件夹选择 ✅
+- [x] 启动后自动打开浏览器 ✅
+- [x] UI 升级: 状态大卡片 ✅
+- [x] 人话日志: 日志翻译层 + 原始/人话切换 ✅
+- [x] 预置技能包 ✅
 
-## 🛡️ Phase 2.5: 稳定性兜底 (真实用户上线前必修)
-- [x] [P0] pnpm.cjs 路径动态探测 (不同 npm 版本全局安装路径不同) ✅
-- [x] [P0] 端口 3000 占用检测 + 自动换端口或提示 ✅
-- [x] [P0] 服务进程崩溃检测 (进程退出但 UI 仍显示"运行中") ✅
-- [ ] [P1] Windows 中文用户名路径编码兼容
-- [ ] [P1] Windows 260 字符长路径限制处理
-- [ ] [P2] 完全断网友好提示 (当前报错信息不够人话)
-- [ ] [P2] 磁盘空间预检查 (下载前检测是否有 500MB+ 可用空间)
-- [ ] [P3] OpenClaw 源码版本检测与自动更新机制
+## 🛡️ Phase 2.5: 稳定性兜底
+- [x] pnpm.cjs 路径动态探测 ✅
+- [x] 端口占用检测 + 自动换端口 ✅
+- [x] 服务进程崩溃检测 ✅
+- [x] CMD 弹窗隐藏 (CREATE_NO_WINDOW) ✅
+- [x] Gateway 正确启动 (gateway + --allow-unconfigured + --port) ✅
+- [x] Gateway Auth Token 自动配置 ✅
+- [x] 自动端口选择 (18789-18799 扫描) ✅
+- [ ] Windows 中文用户名路径编码兼容
+- [ ] Windows 260 字符长路径限制处理
+- [ ] 完全断网友好提示
+- [ ] 磁盘空间预检查
 
-## ⚙️ Phase 3: 管家与生态补全
-- [ ] 实现退出隐藏 (System Tray) 与后台守护模式
-- [ ] 实现客户端级的 UI 换模型和换秘钥功能
-- [ ] UI 大重构: 现代化深色主题 + 响应式布局
-- [ ] 设置页面: 端口配置、语言切换、工作区管理
-- [ ] 一键修复网络: DNS/代理检测 + 自动切镜像
-- [ ] 日志导出: 一键打包日志供用户反馈 bug
+## ⚙️ Phase 3: v1.0 上线版本 — UI 重构 + API Key 配置
 
-## 🏢 Phase 4: 企业级分发与规模化
-- [ ] **Sentry 错误上报** (opt-in): 自动捕获崩溃，Rust + JS 双 SDK
-- [ ] Inno Setup 打包: 防火墙白名单注入
-- [ ] Windows 代码签名 (EV 证书) — 消除 SmartScreen 警告
-- [ ] macOS 公证 (notarization) — 消除 Gatekeeper 拦截
-- [ ] 应用内自动更新 (tauri-plugin-updater)
-- [ ] 企业代理服务器支持 (HTTP_PROXY/HTTPS_PROXY)
-- [ ] ARM Windows 支持 (Surface Pro X 等设备)
+### 🔴 必要功能 (Must-Have)
+
+#### API Key 配置引导
+- [ ] API Key 首次引导页面 (SetupPage)
+- [ ] 主流提供商列表 (Nvidia/OpenRouter/智谱GLM/阿里百炼/字节方舟/DeepSeek/OpenAI)
+- [ ] API Key 输入框 + 密钥验证
+- [ ] 自定义中转站支持 (Base URL + API Key)
+- [ ] 配置写入 OpenClaw auth 系统 (auth-profiles.json)
+
+#### 模型选择与切换
+- [ ] 模型选择页面 (ModelPage)
+- [ ] 根据已配置 Key 显示可用模型列表
+- [ ] 一键切换默认模型
+- [ ] 切换后重启服务生效
+
+#### UI 大重构
+- [ ] Tab 导航布局 (仪表盘 / 模型 / 设置 / 日志)
+- [ ] 仪表盘: 服务状态 + 启停 + 打开网页端
+- [ ] 设置页: API Key 管理、端口、工作区
+- [ ] 日志页: 单独页面，给开发者用
+- [ ] 精致深色主题 (渐变/玻璃态/微动画)
+
+#### 后端 Tauri 命令
+- [ ] `save_api_config(provider, api_key, base_url)` 保存配置
+- [ ] `get_current_config()` 读取当前状态
+- [ ] `set_default_model(model_id)` 切换模型
+- [ ] `validate_api_key(provider, api_key)` 验证 Key 有效性
+
+### 🟡 高级功能 (v1.1+ Later)
+- [ ] Google Gemini OAuth 一键登录
+- [ ] ChatGPT OAuth 登录
+- [ ] Ollama 本地模型集成
+- [ ] System Tray 后台守护
+- [ ] 代理/网络自动检测修复
+- [ ] 日志导出一键打包
+- [ ] i18n 国际化
+
+## 🏢 Phase 4: 企业级分发
+- [ ] Sentry 错误上报 (opt-in)
+- [ ] Windows 代码签名 (EV 证书)
+- [ ] macOS 公证 (notarization)
+- [ ] 应用内自动更新
+- [ ] 企业代理服务器支持
 
 ## 🧪 自动化测试
-- [x] Rust 单元测试: environment.rs, service.rs 核心函数 ✅
-- [x] CI 集成: `cargo test` 在 GitHub Actions 构建前执行 ✅
-- [ ] 前端组件测试 (Vitest + React Testing Library)
-- [ ] E2E 测试: 完整安装→启动→对话流程
+- [x] Rust 单元测试 ✅
+- [x] CI 集成 ✅
+- [ ] 前端组件测试 (Vitest)
+- [ ] E2E 测试: 安装→配置→启动→对话
 
 ## 📋 开源项目规范
-- [x] LICENSE (MIT) ✅
-- [x] CONTRIBUTING.md (开发环境、提交规范、项目结构) ✅
-- [x] CHANGELOG.md (v0.1.0 → v0.2.5 完整记录) ✅
-- [x] SECURITY.md (安全漏洞上报流程) ✅
-- [x] CODE_OF_CONDUCT.md (行为准则) ✅
-- [x] GitHub Issue 模板 (Bug + Feature YAML 表单) ✅
-- [x] GitHub PR 模板 (检查清单) ✅
-- [ ] GitHub Discussions 社区交流 (需手动在 GitHub Settings 开启)
-- [ ] 文档站 (GitHub Pages 或 Mintlify)
-- [ ] i18n 国际化框架 (当前硬编码中文，无法切英文)
-- [ ] CI 自动生成 Release Notes (基于 Conventional Commits)
+- [x] LICENSE / CONTRIBUTING / CHANGELOG / SECURITY / CODE_OF_CONDUCT ✅
+- [x] GitHub Issue + PR 模板 ✅
+- [ ] GitHub Discussions
+- [ ] CI 自动生成 Release Notes

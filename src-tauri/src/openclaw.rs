@@ -87,7 +87,7 @@ pub async fn download_openclaw_source(app: tauri::AppHandle) -> Result<String, S
     // Download ZIP
     let response = reqwest::get(&download_url)
         .await
-        .map_err(|e| format!("下载 OpenClaw 源码失败: {}。请检查网络连接。", e))?;
+        .map_err(|e| environment::humanize_network_error(&e.to_string()))?;
 
     let total_size = response.content_length().unwrap_or(0);
     let mut downloaded: u64 = 0;
@@ -99,7 +99,7 @@ pub async fn download_openclaw_source(app: tauri::AppHandle) -> Result<String, S
         .map_err(|e| format!("创建临时文件失败: {}", e))?;
 
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("下载数据流错误: {}", e))?;
+        let chunk = chunk.map_err(|e| environment::humanize_network_error(&e.to_string()))?;
         file.write_all(&chunk).map_err(|e| format!("写入错误: {}", e))?;
         downloaded += chunk.len() as u64;
 
@@ -503,6 +503,28 @@ pub fn install_preset_skills(app: tauri::AppHandle) -> Result<String, String> {
 /// Full setup pipeline: download source + install deps + inject config + bundle skills
 #[tauri::command]
 pub async fn setup_openclaw(app: tauri::AppHandle) -> Result<String, String> {
+    // Pre-check: Disk space (require 500MB)
+    let sandbox = environment::get_sandbox_dir()?;
+    match environment::check_disk_space(&sandbox, 500) {
+        Ok(false) => {
+            return Err("❌ 磁盘空间不足！OpenClaw 需要至少 500MB 可用空间。请清理磁盘后重试。".to_string());
+        }
+        _ => {} // Ok(true) or Err (can't determine) - proceed
+    }
+
+    // Pre-check: Path compatibility (Chinese username, long paths)
+    if let Some(warning) = environment::check_path_compatibility(&sandbox) {
+        let _ = app.emit("setup-progress", serde_json::json!({
+            "stage": "path_warning",
+            "message": warning,
+            "percent": 2
+        }));
+    }
+
+    // Pre-check: Enable Windows long path support
+    #[cfg(target_os = "windows")]
+    environment::enable_windows_long_paths();
+
     // Step 1: Ensure Node.js is ready
     if !environment::check_node_exists()? {
         environment::download_and_install_node(app.clone()).await?;

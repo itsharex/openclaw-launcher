@@ -1,3 +1,4 @@
+mod config;
 mod environment;
 mod openclaw;
 mod service;
@@ -28,6 +29,12 @@ pub fn run() {
             service::is_service_running,
             service::start_service,
             service::stop_service,
+            // Config & API Key management
+            config::get_providers,
+            config::get_current_config,
+            config::save_api_config,
+            config::set_default_model,
+            config::open_provider_register,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

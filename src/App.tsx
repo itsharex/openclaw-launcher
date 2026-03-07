@@ -4,7 +4,9 @@ import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import "./App.css";
 
+// ===== Types =====
 type AppPhase = "checking" | "initializing" | "workspace" | "ready";
+type TabId = "dashboard" | "models" | "settings" | "logs";
 
 interface LogEntry {
   time: string;
@@ -13,7 +15,24 @@ interface LogEntry {
   humanized?: string;
 }
 
-// Humanized log translation map (npm/node jargon → 人话)
+interface ProviderInfo {
+  id: string;
+  name: string;
+  category: string;
+  base_url: string;
+  register_url: string;
+  description: string;
+  models: ModelInfo[];
+}
+
+interface ModelInfo {
+  id: string;
+  name: string;
+  provider: string;
+  is_free: boolean;
+}
+
+// ===== Log humanization =====
 const LOG_TRANSLATIONS: [RegExp, string][] = [
   [/npm warn/i, "⚠️ 依赖警告（可忽略）"],
   [/npm error/i, "❌ 依赖安装出错"],
@@ -44,6 +63,13 @@ function formatUptime(seconds: number): string {
   return `${s}s`;
 }
 
+const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
+  free: { label: "免费注册", icon: "🆓" },
+  paid: { label: "Coding Plan", icon: "💳" },
+  custom: { label: "自定义中转站", icon: "🔧" },
+};
+
+// ===== App =====
 function App() {
   const [phase, setPhase] = useState<AppPhase>("checking");
   const [running, setRunning] = useState(false);
@@ -55,8 +81,19 @@ function App() {
   const [uptime, setUptime] = useState(0);
   const [servicePort, setServicePort] = useState(18789);
   const [workspacePath, setWorkspacePath] = useState("");
+  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const logRef = useRef<HTMLDivElement>(null);
   const uptimeRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Model/Config state
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("free");
+  const [selectedProvider, setSelectedProvider] = useState("");
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [baseUrlInput, setBaseUrlInput] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+  const [configSaving, setConfigSaving] = useState(false);
+  const [configStatus, setConfigStatus] = useState("");
 
   const addLog = (level: string, message: string) => {
     const now = new Date();
@@ -74,19 +111,20 @@ function App() {
       if (uptimeRef.current) clearInterval(uptimeRef.current);
       setUptime(0);
     }
-    return () => {
-      if (uptimeRef.current) clearInterval(uptimeRef.current);
-    };
+    return () => { if (uptimeRef.current) clearInterval(uptimeRef.current); };
   }, [running]);
 
   // Auto-scroll logs
   useEffect(() => {
-    if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight;
-    }
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [logs]);
 
-  // On mount: check environment status
+  // Load providers on mount
+  useEffect(() => {
+    invoke<ProviderInfo[]>("get_providers").then(setProviders).catch(() => { });
+  }, []);
+
+  // On mount: check environment
   useEffect(() => {
     checkEnvironment();
 
@@ -101,12 +139,9 @@ function App() {
 
     const unlistenLogs = listen<{ level: string; message: string }>(
       "service-log",
-      (event) => {
-        addLog(event.payload.level, event.payload.message);
-      }
+      (event) => addLog(event.payload.level, event.payload.message)
     );
 
-    // Heartbeat: detect if service process crashed
     const unlistenHeartbeat = listen("service-heartbeat", async () => {
       try {
         const alive = await invoke<boolean>("is_service_running");
@@ -117,12 +152,9 @@ function App() {
       } catch { /* ignore */ }
     });
 
-    // Listen for dynamic port assignment
     const unlistenPort = listen<{ port: number }>(
       "service-port",
-      (event) => {
-        setServicePort(event.payload.port);
-      }
+      (event) => setServicePort(event.payload.port)
     );
 
     return () => {
@@ -133,6 +165,7 @@ function App() {
     };
   }, []);
 
+  // ===== Actions =====
   const checkEnvironment = async () => {
     try {
       const nodeOk = await invoke<boolean>("check_node_exists");
@@ -178,15 +211,12 @@ function App() {
 
   const handleSelectFolder = async () => {
     const selected = await open({ directory: true, multiple: false, title: "选择你的工作区目录" });
-    if (selected && typeof selected === "string") {
-      setWorkspacePath(selected);
-    }
+    if (selected && typeof selected === "string") setWorkspacePath(selected);
   };
 
   const handleConfirmWorkspace = async () => {
     setLoading(true);
     try {
-      // Inject config with workspace path (backend will use default if empty)
       await invoke("inject_default_config");
       await invoke("inject_default_models");
       addLog("success", `✅ 工作区已配置: ${workspacePath || "默认目录"}`);
@@ -222,6 +252,43 @@ function App() {
     }
   };
 
+  const handleSaveConfig = async () => {
+    if (!apiKeyInput.trim()) { setConfigStatus("❌ 请输入 API Key"); return; }
+    setConfigSaving(true);
+    setConfigStatus("");
+    try {
+      const result = await invoke<string>("save_api_config", {
+        provider: selectedProvider || "custom",
+        apiKey: apiKeyInput,
+        baseUrl: baseUrlInput || null,
+        model: selectedModel || null,
+      });
+      setConfigStatus(result);
+      addLog("success", result);
+    } catch (err) {
+      setConfigStatus(`❌ 保存失败: ${err}`);
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
+  const handleSetModel = async (modelId: string) => {
+    try {
+      const result = await invoke<string>("set_default_model", { modelId });
+      setSelectedModel(modelId);
+      setConfigStatus(result);
+      addLog("success", result);
+    } catch (err) {
+      setConfigStatus(`❌ 切换失败: ${err}`);
+    }
+  };
+
+  const handleOpenRegister = async (providerId: string) => {
+    try {
+      await invoke("open_provider_register", { providerId });
+    } catch { /* ignore */ }
+  };
+
   const getStatusClass = () => {
     if (loading) return "loading";
     if (running) return "running";
@@ -229,17 +296,13 @@ function App() {
     return "idle";
   };
 
+  const filteredProviders = providers.filter((p) => p.category === selectedCategory);
+
   // ===== Init Screen =====
   if (phase === "checking" || phase === "initializing") {
     return (
       <div className="app">
-        <header className="header">
-          <div className="header-left">
-            <span className="header-logo">OpenClaw Launcher</span>
-            <span className="header-version">v0.3.1</span>
-          </div>
-          <span className={`status-dot ${getStatusClass()}`} />
-        </header>
+        <Header running={false} loading={loading} phase={phase} statusClass={getStatusClass()} />
         <div className="init-screen">
           <div className="init-title">
             {phase === "checking" ? "🔍 正在检查环境..." : "⚙️ 正在初始化 OpenClaw"}
@@ -257,12 +320,7 @@ function App() {
   if (phase === "workspace") {
     return (
       <div className="app">
-        <header className="header">
-          <div className="header-left">
-            <span className="header-logo">OpenClaw Launcher</span>
-            <span className="header-version">v0.3.1</span>
-          </div>
-        </header>
+        <Header running={false} loading={loading} phase={phase} statusClass={getStatusClass()} />
         <div className="init-screen">
           <div className="init-title">📂 选择工作区目录</div>
           <div className="init-message" style={{ maxWidth: 420, lineHeight: 1.8 }}>
@@ -272,16 +330,9 @@ function App() {
             <code className="workspace-path">
               {workspacePath || "~/Documents/OpenClaw-Projects (默认)"}
             </code>
-            <button className="btn-quick" onClick={handleSelectFolder}>
-              📁 浏览...
-            </button>
+            <button className="btn-quick" onClick={handleSelectFolder}>📁 浏览...</button>
           </div>
-          <button
-            className="btn-start start"
-            onClick={handleConfirmWorkspace}
-            disabled={loading}
-            style={{ marginTop: 24 }}
-          >
+          <button className="btn-start start" onClick={handleConfirmWorkspace} disabled={loading} style={{ marginTop: 24 }}>
             ✅ 确认并继续
           </button>
         </div>
@@ -289,107 +340,310 @@ function App() {
     );
   }
 
-  // ===== Main Dashboard =====
+  // ===== Main App with Tabs =====
   return (
     <div className="app">
-      <header className="header">
-        <div className="header-left">
-          <span className="header-logo">OpenClaw Launcher</span>
-          <span className="header-version">v0.3.1</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <Header running={running} loading={loading} phase={phase} statusClass={getStatusClass()} />
+
+      {/* Tab Navigation */}
+      <nav className="tab-nav">
+        {([
+          { id: "dashboard" as TabId, label: "仪表盘", icon: "📊" },
+          { id: "models" as TabId, label: "模型", icon: "🤖" },
+          { id: "settings" as TabId, label: "设置", icon: "⚙️" },
+          { id: "logs" as TabId, label: "日志", icon: "📋" },
+        ]).map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <span className="tab-icon">{tab.icon}</span>
+            <span className="tab-label">{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <div className="tab-content">
+        {/* ===== Dashboard Tab ===== */}
+        {activeTab === "dashboard" && (
+          <div className="dashboard">
+            <div className="status-cards">
+              <div className={`status-card main-card ${running ? "active" : ""}`}>
+                <div className="card-icon">{running ? "🟢" : "⚫"}</div>
+                <div className="card-info">
+                  <div className="card-label">服务状态</div>
+                  <div className="card-value">{running ? "运行中" : "已停止"}</div>
+                </div>
+              </div>
+              <div className="status-card">
+                <div className="card-icon">⏱️</div>
+                <div className="card-info">
+                  <div className="card-label">运行时长</div>
+                  <div className="card-value">{running ? formatUptime(uptime) : "--"}</div>
+                </div>
+              </div>
+              <div className="status-card">
+                <div className="card-icon">🌐</div>
+                <div className="card-info">
+                  <div className="card-label">访问地址</div>
+                  <div className="card-value">{running ? `localhost:${servicePort}` : "--"}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="control-panel">
+              <button
+                className={`btn-start ${running ? "stop" : "start"}`}
+                onClick={running ? handleStop : handleStart}
+                disabled={loading}
+              >
+                {loading ? "处理中..." : running ? "⏹ 停止服务" : "▶ 启动 OpenClaw"}
+              </button>
+              <div className="quick-actions">
+                <button
+                  className="btn-quick"
+                  onClick={() => window.open(`http://localhost:${servicePort}?token=openclaw-launcher-local`, "_blank")}
+                  disabled={!running}
+                >
+                  🌐 打开网页端
+                </button>
+              </div>
+            </div>
+
+            {/* Compact recent logs */}
+            <div className="log-panel compact">
+              <div className="log-header">
+                <span>最近日志</span>
+                <button className="btn-link" onClick={() => setActiveTab("logs")}>查看全部 →</button>
+              </div>
+              <div className="log-content" style={{ maxHeight: 120 }}>
+                {logs.slice(-5).map((log, i) => (
+                  <div className="log-line" key={i}>
+                    <span className="log-time">{log.time}</span>
+                    <span className={`log-msg ${log.level}`}>{log.humanized || log.message}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== Models Tab ===== */}
+        {activeTab === "models" && (
+          <div className="models-page">
+            <h2 className="page-title">🤖 模型配置</h2>
+            <p className="page-desc">选择 AI 模型提供商，配置 API Key 后即可开始使用。</p>
+
+            {/* Category tabs */}
+            <div className="category-tabs">
+              {Object.entries(CATEGORY_LABELS).map(([key, { label, icon }]) => (
+                <button
+                  key={key}
+                  className={`category-btn ${selectedCategory === key ? "active" : ""}`}
+                  onClick={() => { setSelectedCategory(key); setSelectedProvider(""); }}
+                >
+                  {icon} {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom relay station */}
+            {selectedCategory === "custom" ? (
+              <div className="custom-config">
+                <div className="form-group">
+                  <label>API Base URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://your-relay.com/v1"
+                    value={baseUrlInput}
+                    onChange={(e) => setBaseUrlInput(e.target.value)}
+                    className="input-field"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>API Key</label>
+                  <input
+                    type="password"
+                    placeholder="sk-..."
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    className="input-field"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>模型 ID（可选）</label>
+                  <input
+                    type="text"
+                    placeholder="gpt-4o / deepseek-chat / ..."
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="input-field"
+                  />
+                </div>
+                <button
+                  className="btn-start start"
+                  onClick={handleSaveConfig}
+                  disabled={configSaving}
+                >
+                  {configSaving ? "保存中..." : "💾 保存配置"}
+                </button>
+                {configStatus && <div className="config-status">{configStatus}</div>}
+              </div>
+            ) : (
+              /* Provider list */
+              <div className="provider-list">
+                {filteredProviders.map((p) => (
+                  <div
+                    key={p.id}
+                    className={`provider-card ${selectedProvider === p.id ? "selected" : ""}`}
+                    onClick={() => {
+                      setSelectedProvider(p.id);
+                      setBaseUrlInput(p.base_url);
+                      setSelectedModel(p.models[0]?.id || "");
+                    }}
+                  >
+                    <div className="provider-header">
+                      <span className="provider-name">{p.name}</span>
+                      {p.category === "free" && <span className="badge-free">免费</span>}
+                    </div>
+                    <p className="provider-desc">{p.description}</p>
+                    <div className="provider-models">
+                      {p.models.slice(0, 3).map((m) => (
+                        <span key={m.id} className="model-tag">{m.name}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Config panel when provider selected */}
+            {selectedProvider && selectedCategory !== "custom" && (
+              <div className="config-panel">
+                <div className="config-panel-header">
+                  <span>配置 {providers.find(p => p.id === selectedProvider)?.name}</span>
+                  <button className="btn-link" onClick={() => handleOpenRegister(selectedProvider)}>
+                    🔗 去注册
+                  </button>
+                </div>
+                <div className="form-group">
+                  <label>API Key</label>
+                  <input
+                    type="password"
+                    placeholder="粘贴你的 API Key..."
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    className="input-field"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>选择模型</label>
+                  <div className="model-select-list">
+                    {providers.find(p => p.id === selectedProvider)?.models.map((m) => (
+                      <button
+                        key={m.id}
+                        className={`model-select-btn ${selectedModel === m.id ? "active" : ""}`}
+                        onClick={() => setSelectedModel(m.id)}
+                      >
+                        {m.name}
+                        {m.is_free && <span className="badge-free-sm">免费</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  className="btn-start start"
+                  onClick={handleSaveConfig}
+                  disabled={configSaving || !apiKeyInput}
+                >
+                  {configSaving ? "保存中..." : "💾 保存并应用"}
+                </button>
+                {configStatus && <div className="config-status">{configStatus}</div>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===== Settings Tab ===== */}
+        {activeTab === "settings" && (
+          <div className="settings-page">
+            <h2 className="page-title">⚙️ 设置</h2>
+            <div className="settings-group">
+              <div className="setting-item">
+                <div className="setting-label">服务端口</div>
+                <div className="setting-value">{servicePort}</div>
+              </div>
+              <div className="setting-item">
+                <div className="setting-label">版本</div>
+                <div className="setting-value">v0.3.1</div>
+              </div>
+              <div className="setting-item">
+                <div className="setting-label">工作区</div>
+                <div className="setting-value" style={{ fontSize: 12 }}>
+                  {workspacePath || "~/Documents/OpenClaw-Projects"}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== Logs Tab ===== */}
+        {activeTab === "logs" && (
+          <div className="logs-page">
+            <div className="log-panel full">
+              <div className="log-header">
+                <span>📋 运行日志</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <label className="log-toggle">
+                    <input type="checkbox" checked={showRawLogs} onChange={(e) => setShowRawLogs(e.target.checked)} />
+                    <span>原始日志</span>
+                  </label>
+                  <span>{logs.length} 条</span>
+                </div>
+              </div>
+              <div className="log-content full-height" ref={logRef}>
+                {logs.length === 0 ? (
+                  <div className="log-empty">暂无日志 — 点击「启动 OpenClaw」开始</div>
+                ) : (
+                  logs.map((log, i) => {
+                    const displayMsg = !showRawLogs && log.humanized ? log.humanized : log.message;
+                    return (
+                      <div className="log-line" key={i}>
+                        <span className="log-time">{log.time}</span>
+                        <span className={`log-msg ${log.level}`}>{displayMsg}</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ===== Header Component =====
+function Header({ running, loading, phase, statusClass }: {
+  running: boolean; loading: boolean; phase: string; statusClass: string;
+}) {
+  return (
+    <header className="header">
+      <div className="header-left">
+        <span className="header-logo">OpenClaw Launcher</span>
+        <span className="header-version">v0.3.1</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {phase === "ready" && (
           <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
             {running ? "运行中" : "已停止"}
           </span>
-          <span className={`status-dot ${getStatusClass()}`} />
-        </div>
-      </header>
-
-      <div className="dashboard">
-        {/* Status Cards */}
-        <div className="status-cards">
-          <div className={`status-card main-card ${running ? "active" : ""}`}>
-            <div className="card-icon">{running ? "🟢" : "⚫"}</div>
-            <div className="card-info">
-              <div className="card-label">服务状态</div>
-              <div className="card-value">{running ? "运行中" : "已停止"}</div>
-            </div>
-          </div>
-          <div className="status-card">
-            <div className="card-icon">⏱️</div>
-            <div className="card-info">
-              <div className="card-label">运行时长</div>
-              <div className="card-value">{running ? formatUptime(uptime) : "--"}</div>
-            </div>
-          </div>
-          <div className="status-card">
-            <div className="card-icon">🌐</div>
-            <div className="card-info">
-              <div className="card-label">访问地址</div>
-              <div className="card-value">{running ? `localhost:${servicePort}` : "--"}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Free model hint */}
-        <div className="free-model-hint">
-          💡 当前使用 OpenRouter 免费模型，回复可能较慢。配置自己的 API Key 可获得更快速度和更强模型。
-        </div>
-
-        {/* Controls */}
-        <div className="control-panel">
-          <button
-            className={`btn-start ${running ? "stop" : "start"}`}
-            onClick={running ? handleStop : handleStart}
-            disabled={loading}
-          >
-            {loading ? "处理中..." : running ? "⏹ 停止服务" : "▶ 启动 OpenClaw"}
-          </button>
-          <div className="quick-actions">
-            <button
-              className="btn-quick"
-              onClick={() => window.open(`http://localhost:${servicePort}?token=openclaw-launcher-local`, "_blank")}
-              disabled={!running}
-            >
-              🌐 打开网页端
-            </button>
-          </div>
-        </div>
-
-        {/* Log Panel */}
-        <div className="log-panel">
-          <div className="log-header">
-            <span>📋 运行日志</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <label className="log-toggle">
-                <input
-                  type="checkbox"
-                  checked={showRawLogs}
-                  onChange={(e) => setShowRawLogs(e.target.checked)}
-                />
-                <span>原始日志</span>
-              </label>
-              <span>{logs.length} 条</span>
-            </div>
-          </div>
-          <div className="log-content" ref={logRef}>
-            {logs.length === 0 ? (
-              <div className="log-empty">暂无日志 — 点击「启动 OpenClaw」开始</div>
-            ) : (
-              logs.map((log, i) => {
-                const displayMsg = !showRawLogs && log.humanized ? log.humanized : log.message;
-                return (
-                  <div className="log-line" key={i}>
-                    <span className="log-time">{log.time}</span>
-                    <span className={`log-msg ${log.level}`}>{displayMsg}</span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+        )}
+        <span className={`status-dot ${statusClass}`} />
       </div>
-    </div>
+    </header>
   );
 }
 

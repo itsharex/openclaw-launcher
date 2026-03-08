@@ -3,6 +3,7 @@ mod download;
 mod environment;
 mod installer;
 mod paths;
+mod providers;
 mod service;
 mod setup;
 
@@ -35,14 +36,15 @@ pub fn run() {
             service::is_service_running,
             service::start_service,
             service::stop_service,
+            // Provider catalog & URL
+            providers::get_providers,
+            providers::open_provider_register,
+            providers::open_url,
             // Config & API Key management
-            config::get_providers,
             config::get_current_config,
             config::migrate_gateway_config,
             config::save_api_config,
             config::set_default_model,
-            config::open_provider_register,
-            config::open_url,
             config::reset_config,
         ])
         .run(tauri::generate_context!())

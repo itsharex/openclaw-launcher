@@ -117,6 +117,8 @@ function App() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [showModelSwitchModal, setShowModelSwitchModal] = useState(false);
   const [infoModalTitle, setInfoModalTitle] = useState("");
+  const [repairToast, setRepairToast] = useState(false);
+  const [repairing, setRepairing] = useState(false);
 
   const addLog = (level: string, message: string) => {
     const now = new Date();
@@ -124,6 +126,11 @@ function App() {
     const cleanMsg = stripAnsi(message);
     const humanized = humanizeLog(cleanMsg);
     setLogs((prev) => [...prev.slice(-300), { time, level, message: cleanMsg, humanized }]);
+
+    // Auto-detect connection auth failures
+    if (cleanMsg.includes("device signature invalid") || cleanMsg.includes("signature invalid")) {
+      setRepairToast(true);
+    }
   };
 
   // Uptime counter
@@ -400,6 +407,34 @@ function App() {
       setProgressMsg(`❌ 重新安装失败: ${err}`);
     } finally {
       setReinstalling(false);
+    }
+  };
+
+  const handleRepairConnection = async () => {
+    setRepairing(true);
+    setRepairToast(false);
+    addLog("info", "🔧 开始一键修复连接...");
+    try {
+      // Step 1: Stop service if running
+      if (running) {
+        addLog("info", "正在停止服务...");
+        await invoke("stop_service");
+        setRunning(false);
+        await new Promise(r => setTimeout(r, 1500));
+      }
+      // Step 2: Restart service
+      addLog("info", "正在重新启动服务...");
+      await invoke("start_service");
+      setRunning(true);
+      await new Promise(r => setTimeout(r, 2000));
+      // Step 3: Open browser with cache-busting timestamp
+      const ts = Date.now();
+      await invoke("open_url", { url: `http://localhost:${servicePort}?token=openclaw-launcher-local&_t=${ts}` });
+      addLog("success", "✅ 连接修复完成，已重新打开浏览器");
+    } catch (err) {
+      addLog("error", `修复失败: ${err}`);
+    } finally {
+      setRepairing(false);
     }
   };
 
@@ -842,6 +877,18 @@ function App() {
                       </button>
                     </div>
 
+                    <div className="setting-item" style={{ marginTop: 12 }}>
+                      <div className="setting-left">
+                        <div className="setting-label">一键检测修复</div>
+                        <div className="setting-value" style={{ fontSize: 12 }}>
+                          修复连接认证失败、设备签名等问题（重启服务 + 刷新会话）
+                        </div>
+                      </div>
+                      <button className="btn-secondary" onClick={handleRepairConnection} disabled={repairing}>
+                        {repairing ? "修复中..." : "🔧 一键修复"}
+                      </button>
+                    </div>
+
                     <div className="setting-item setting-danger" style={{ marginTop: 16 }}>
                       <div className="setting-left">
                         <div className="setting-label" style={{ color: 'var(--accent-red)' }}>恢复出厂设置</div>
@@ -1042,6 +1089,49 @@ function App() {
                 <button className="btn-danger" onClick={confirmReset}>确认重置</button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Connection Repair Toast */}
+      <AnimatePresence>
+        {repairToast && (
+          <motion.div
+            className="repair-toast"
+            initial={{ opacity: 0, y: 50, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 50, x: '-50%' }}
+            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+            style={{
+              position: 'fixed', bottom: 24, left: '50%',
+              background: 'linear-gradient(135deg, rgba(30,30,40,0.98), rgba(40,30,30,0.98))',
+              border: '1px solid var(--accent-red, #ff4444)',
+              borderRadius: 'var(--radius, 12px)',
+              padding: '16px 24px', zIndex: 9999,
+              display: 'flex', alignItems: 'center', gap: 16,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              maxWidth: 480,
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4, color: '#ff6b6b' }}>⚠️ 检测到连接认证失败</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted, #888)' }}>
+                设备签名校验异常，点击一键修复（重启服务 + 刷新会话）
+              </div>
+            </div>
+            <button
+              className="btn-primary"
+              style={{ whiteSpace: 'nowrap', padding: '8px 16px', fontSize: 13 }}
+              onClick={handleRepairConnection}
+              disabled={repairing}
+            >
+              {repairing ? "修复中..." : "🔧 一键修复"}
+            </button>
+            <button
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
+              onClick={() => setRepairToast(false)}
+              title="关闭"
+            >×</button>
           </motion.div>
         )}
       </AnimatePresence>

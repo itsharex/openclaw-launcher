@@ -13,7 +13,7 @@ export function ModelSwitchModal({
     show, onClose, providers, currentConfig, handleSetModel,
 }: ModelSwitchModalProps) {
     return (
-        <Modal show={show} onClose={onClose} title="🔄 切换模型" maxWidth={400}>
+        <Modal show={show} onClose={onClose} title="切换模型" maxWidth={400}>
             <div className="modal-desc">选择要使用的 AI 模型</div>
             {currentConfig?.provider ? (
                 <div className="model-switch-list" style={{ marginTop: 12 }}>

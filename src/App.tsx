@@ -214,19 +214,19 @@ function App() {
       {/* Reset Confirmation Modal */}
       <ConfirmModal
         show={showResetModal}
-        title="⚠️ 重置配置"
+        title="重置配置"
         onCancel={() => setShowResetModal(false)}
         onConfirm={confirmReset}
         confirmLabel="确认重置"
       >
         <p style={{ marginBottom: 12 }}>仅重置 API Key 和模型配置（openclaw.json 中的 models/agents 部分）。</p>
-        <p style={{ color: "var(--text-secondary)", marginBottom: 4 }}>✅ 不会删除：</p>
+        <p style={{ color: "var(--text-secondary)", marginBottom: 4 }}>不会删除：</p>
         <ul style={{ paddingLeft: 20, marginBottom: 12, color: "var(--text-secondary)" }}>
           <li>对话历史和记忆</li>
           <li>Agent 技能和书签</li>
           <li>工作区文件</li>
         </ul>
-        <p style={{ color: "var(--accent-red)", marginBottom: 4 }}>🗑️ 将清除：</p>
+        <p style={{ color: "var(--accent-red)", marginBottom: 4 }}>将清除：</p>
         <ul style={{ paddingLeft: 20, color: "var(--text-secondary)" }}>
           <li>API Key 配置</li>
           <li>模型选择和默认模型</li>
@@ -236,7 +236,7 @@ function App() {
       {/* Reinstall Confirmation Modal */}
       <ConfirmModal
         show={showReinstallModal}
-        title="🔄 重新安装运行环境"
+        title="重新安装运行环境"
         onCancel={() => setShowReinstallModal(false)}
         onConfirm={confirmReinstall}
         confirmLabel="确认重新安装"
@@ -248,7 +248,7 @@ function App() {
           <li>环境损坏或依赖缺失</li>
           <li>版本升级后不兼容</li>
         </ul>
-        <p style={{ color: "var(--text-secondary)", fontSize: 12 }}>⏱️ 根据网络情况，可能需要 3-10 分钟</p>
+        <p style={{ color: "var(--text-secondary)", fontSize: 12 }}>根据网络情况，可能需要 3-10 分钟</p>
       </ConfirmModal>
 
       {/* Connection Repair Toast */}

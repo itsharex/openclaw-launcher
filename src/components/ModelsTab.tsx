@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Cpu, Save } from "lucide-react";
 import { CATEGORY_LABELS } from "../types";
 import type { ProviderInfo, CurrentConfig } from "../types";
 
@@ -42,7 +43,7 @@ export function ModelsTab({
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
         >
-            <h2 className="page-title">🤖 模型配置</h2>
+            <h2 className="page-title"><Cpu size={18} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 6 }} />模型配置</h2>
             <p className="page-desc">选择 AI 模型提供商，配置 API Key 后即可开始使用。</p>
 
             <div className="category-tabs" style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid var(--border-subtle)' }}>
@@ -73,7 +74,7 @@ export function ModelsTab({
                             onChange={(e) => setSelectedModel(e.target.value)} className="input-field" />
                     </div>
                     <button className="btn-primary" style={{ width: '100%', marginTop: 16, padding: '12px' }} onClick={handleSaveConfig} disabled={configSaving}>
-                        {configSaving ? "保存中..." : "💾 保存配置"}
+                        {configSaving ? "保存中..." : <><Save size={14} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 4 }} />保存配置</>}
                     </button>
                     {configStatus && <div className="config-status" style={{ marginTop: 12 }}>{configStatus}</div>}
                 </div>

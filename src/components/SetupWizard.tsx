@@ -6,6 +6,7 @@
  */
 
 import { motion } from "framer-motion";
+import { FolderOpen, FolderSearch } from "lucide-react";
 import type { AppPhase } from "../types";
 
 interface SetupWizardProps {
@@ -61,7 +62,7 @@ export function SetupWizard({
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                 >
-                    <div className="startup-logo">📂 选择工作区目录</div>
+                    <div className="startup-logo"><FolderOpen size={20} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 8 }} />选择工作区目录</div>
                     <p className="modal-desc" style={{ marginBottom: 20, textAlign: 'center' }}>
                         AI 会在这个文件夹里帮你写代码。你可以选择任意文件夹，或使用默认目录。
                     </p>
@@ -69,10 +70,10 @@ export function SetupWizard({
                         <code className="workspace-path">
                             {workspacePath || "~/Documents/OpenClaw-Projects (默认)"}
                         </code>
-                        <button className="btn-quick" onClick={onSelectFolder}>📁 浏览...</button>
+                        <button className="btn-quick" onClick={onSelectFolder}><FolderSearch size={14} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 4 }} />浏览...</button>
                     </div>
                     <button className="btn-primary btn-hero start" onClick={onConfirmWorkspace} disabled={loading} style={{ marginTop: 16 }}>
-                        ✅ 确认并继续
+                        确认并继续
                     </button>
                 </motion.div>
             </div>

@@ -7,6 +7,7 @@
  */
 
 import { AnimatePresence, motion } from "framer-motion";
+import { Key } from "lucide-react";
 import type { ProviderInfo, CurrentConfig } from "../types";
 import { CATEGORY_LABELS } from "../types";
 
@@ -85,7 +86,7 @@ export function ApiKeyModal({
                         transition={{ type: "spring", bounce: 0, duration: 0.3 }}
                     >
                         <div className="modal-title">
-                            {isDirectConfig ? `配置 ${providers.find(p => p.id === selectedProvider)?.name}` : "🔑 配置 AI 模型 API Key"}
+                            {isDirectConfig ? `配置 ${providers.find(p => p.id === selectedProvider)?.name}` : <><Key size={16} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 6 }} />配置 AI 模型 API Key</>}
                         </div>
                         {!isDirectConfig && (
                             <div className="modal-desc">
@@ -186,7 +187,7 @@ export function ApiKeyModal({
 
                         <button className="btn-primary btn-hero start modal-save"
                             onClick={onSaveConfig} disabled={configSaving || !apiKeyInput.trim()}>
-                            {configSaving ? "保存中..." : "✅ 保存并开始使用"}
+                            {configSaving ? "保存中..." : "保存并开始使用"}
                         </button>
                         {configStatus && <div className="config-status">{configStatus}</div>}
                     </motion.div>

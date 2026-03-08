@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Settings as SettingsIcon, Box, Hexagon, Github, RefreshCw } from "lucide-react";
+import { Settings as SettingsIcon, Box, Hexagon, Github, RefreshCw, SlidersHorizontal, FolderOpen, Key, Wrench, Trash2, FileText, Download, MessageCircle, Heart, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 import type { CurrentConfig, LogEntry } from "../types";
 import React from "react";
@@ -61,7 +61,7 @@ export function SettingsTab({
                 <div className="settings-content-scroll">
                     {activeSettingsTab === "general" && (
                         <div className="settings-group animate-fade-in">
-                            <h3 className="settings-section-title">🎛️ 通用设置</h3>
+                            <h3 className="settings-section-title"><SlidersHorizontal size={16} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 6 }} />通用设置</h3>
                             <div className="setting-item">
                                 <div className="setting-left">
                                     <div className="setting-label">工作区目录</div>
@@ -69,7 +69,7 @@ export function SettingsTab({
                                         {workspacePath || "~/Documents/OpenClaw-Projects"}
                                     </div>
                                 </div>
-                                <button className="btn-secondary" onClick={handleSwitchWorkspace}>📂 更改</button>
+                                <button className="btn-secondary" onClick={handleSwitchWorkspace}><FolderOpen size={14} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 4 }} />更改</button>
                             </div>
 
                             <div className="setting-item">
@@ -83,10 +83,10 @@ export function SettingsTab({
                                 <div className="setting-left">
                                     <div className="setting-label">API Key 状态</div>
                                     <div className="setting-value">
-                                        {currentConfig?.has_api_key ? "✅ 已配置" : "❌ 未配置"}
+                                        {currentConfig?.has_api_key ? <><Check size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />已配置</> : <><X size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />未配置</>}
                                     </div>
                                 </div>
-                                <button className="btn-secondary" onClick={() => setShowKeyModal(true)}>🔑 生命周期重配</button>
+                                <button className="btn-secondary" onClick={() => setShowKeyModal(true)}><Key size={14} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 4 }} />生命周期重配</button>
                             </div>
 
                             <div className="setting-item" style={{ marginTop: 24 }}>
@@ -97,7 +97,7 @@ export function SettingsTab({
                                     </div>
                                 </div>
                                 <button className="btn-secondary" onClick={handleReinstall} disabled={reinstalling}>
-                                    {reinstalling ? "安装中..." : "🔄 重新安装"}
+                                    {reinstalling ? "安装中..." : <><RefreshCw size={14} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 4 }} />重新安装</>}
                                 </button>
                             </div>
 
@@ -109,7 +109,7 @@ export function SettingsTab({
                                     </div>
                                 </div>
                                 <button className="btn-secondary" onClick={handleRepairConnection} disabled={repairing}>
-                                    {repairing ? "修复中..." : "🔧 一键修复"}
+                                    {repairing ? "修复中..." : <><Wrench size={14} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 4 }} />一键修复</>}
                                 </button>
                             </div>
 
@@ -120,7 +120,7 @@ export function SettingsTab({
                                         抹除 openclaw.json 与 API Key 等敏感信息，回到纯净状态
                                     </div>
                                 </div>
-                                <button className="btn-danger" onClick={handleReset}>🗑️ 擦除数据</button>
+                                <button className="btn-danger" onClick={handleReset}><Trash2 size={14} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 4 }} />擦除数据</button>
                             </div>
                         </div>
                     )}
@@ -128,9 +128,9 @@ export function SettingsTab({
                     {activeSettingsTab === "logs" && (
                         <div className="settings-group animate-fade-in">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                                <h3 className="settings-section-title" style={{ margin: 0 }}>📄 日志诊断</h3>
+                                <h3 className="settings-section-title" style={{ margin: 0 }}><FileText size={16} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 6 }} />日志诊断</h3>
                                 <button className="btn-primary" style={{ padding: '6px 16px', fontSize: 13 }}>
-                                    📦 导出诊断 ZIP
+                                    <Download size={14} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 4 }} />导出诊断 ZIP
                                 </button>
                             </div>
                             <div className="log-panel" style={{ height: 380, borderRadius: 'var(--radius)' }}>
@@ -179,12 +179,12 @@ export function SettingsTab({
                                     <Github size={18} strokeWidth={1.5} />
                                     <div className="link-text">查看 GitHub 源码</div>
                                 </button>
-                                <button className="about-link-card" onClick={() => setInfoModalTitle("💬 关注微信公众号 / 加入交流群")}>
-                                    <span style={{ fontSize: 18 }}>💬</span>
+                                <button className="about-link-card" onClick={() => setInfoModalTitle("关注微信公众号 / 加入交流群")}>
+                                    <MessageCircle size={18} strokeWidth={1.5} />
                                     <div className="link-text">加入交流群 / 联系作者</div>
                                 </button>
-                                <button className="about-link-card" onClick={() => setInfoModalTitle("☕ 赞赏与支持")}>
-                                    <span style={{ fontSize: 18 }}>☕</span>
+                                <button className="about-link-card" onClick={() => setInfoModalTitle("赞赏与支持")}>
+                                    <Heart size={18} strokeWidth={1.5} />
                                     <div className="link-text">赞赏与支持项目发展</div>
                                 </button>
                             </div>

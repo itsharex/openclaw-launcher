@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Activity, Box, Cpu, Hexagon, Play, Loader2 } from "lucide-react";
+import { Activity, Box, Cpu, Hexagon, Play, Loader2, Square } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatUptime } from "../utils/log-humanizer";
 
@@ -51,7 +51,7 @@ export function DashboardTab({
                                 {running ? "中断中..." : "引擎唤醒中..."}
                             </>
                         ) : (
-                            running ? "⏹ 中断服务" : <><Play size={16} fill="currentColor" /> 初始化并启动</>
+                            running ? <><Square size={16} fill="currentColor" /> 中断服务</> : <><Play size={16} fill="currentColor" /> 初始化并启动</>
                         )}
                     </button>
                     {running && (

@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { AlertTriangle, Wrench } from "lucide-react";
 
 interface RepairToastProps {
     show: boolean;
@@ -29,7 +30,7 @@ export function RepairToast({ show, repairing, onRepair, onDismiss }: RepairToas
                     }}
                 >
                     <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, marginBottom: 4, color: '#ff6b6b' }}>⚠️ 检测到连接认证失败</div>
+                        <div style={{ fontWeight: 600, marginBottom: 4, color: '#ff6b6b' }}><AlertTriangle size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />检测到连接认证失败</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted, #888)' }}>
                             设备签名校验异常，点击一键修复（重启服务 + 刷新会话）
                         </div>
@@ -40,7 +41,7 @@ export function RepairToast({ show, repairing, onRepair, onDismiss }: RepairToas
                         onClick={onRepair}
                         disabled={repairing}
                     >
-                        {repairing ? "修复中..." : "🔧 一键修复"}
+                        {repairing ? "修复中..." : <><Wrench size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />一键修复</>}
                     </button>
                     <button
                         style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}

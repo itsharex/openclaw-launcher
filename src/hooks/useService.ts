@@ -16,11 +16,12 @@ interface UseServiceOptions {
     addLog: (level: string, message: string) => void;
     checkApiKey: () => Promise<void>;
     setRepairToast: (show: boolean) => void;
+    setShowReinstallModal: (show: boolean) => void;
     running: boolean;
     setRunning: (r: boolean) => void;
 }
 
-export function useService({ addLog, checkApiKey, setRepairToast, running, setRunning }: UseServiceOptions) {
+export function useService({ addLog, checkApiKey, setRepairToast, setShowReinstallModal, running, setRunning }: UseServiceOptions) {
     const [phase, setPhase] = useState<AppPhase>("checking");
     const [loading, setLoading] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -192,6 +193,7 @@ export function useService({ addLog, checkApiKey, setRepairToast, running, setRu
     }, [addLog]);
 
     const confirmReinstall = useCallback(async () => {
+        setShowReinstallModal(false);
         setReinstalling(true);
         setPhase("initializing");
         setProgress(0);
@@ -207,7 +209,7 @@ export function useService({ addLog, checkApiKey, setRepairToast, running, setRu
         } finally {
             setReinstalling(false);
         }
-    }, [addLog, checkApiKey]);
+    }, [addLog, checkApiKey, setShowReinstallModal]);
 
     const handleRepairConnection = useCallback(async () => {
         setRepairing(true);
@@ -225,11 +227,7 @@ export function useService({ addLog, checkApiKey, setRepairToast, running, setRu
             addLog("info", "正在重新启动服务...");
             await invoke("start_service");
             setRunning(true);
-            await new Promise(r => setTimeout(r, 2000));
-            // Step 3: Open browser with cache-busting timestamp
-            const ts = Date.now();
-            await invoke("open_url", { url: `http://localhost:${servicePort}?token=openclaw-launcher-local&_t=${ts}` });
-            addLog("success", "✅ 连接修复完成，已重新打开浏览器");
+            addLog("success", "✅ 连接修复完成，服务已重启");
         } catch (err) {
             addLog("error", `修复失败: ${err}`);
         } finally {

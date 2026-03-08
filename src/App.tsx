@@ -51,7 +51,7 @@ function App() {
     handleSelectFolder, handleConfirmWorkspace, handleSwitchWorkspace,
     handleStart, handleStop,
     confirmReinstall, handleRepairConnection,
-  } = useService({ addLog, checkApiKey, setRepairToast, running, setRunning });
+  } = useService({ addLog, checkApiKey, setRepairToast, setShowReinstallModal, running, setRunning });
 
   const getStatusClass = () => {
     if (loading) return "loading";

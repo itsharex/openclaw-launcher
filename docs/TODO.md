@@ -92,8 +92,13 @@
 - [x] Stage 2: 通用 UI 组件（Modal）✅ `v2-stage2-complete`
 - [x] Stage 3: 页面组件拆分（Header/ApiKeyModal/SetupWizard）✅ `v2-stage3-complete`
 - [x] Stage 4: Custom Hooks（useLogs/useConfig/useService）✅ `v2-stage4-complete`
-- [ ] Stage 5: 后端 Rust 模块拆分 🚧
-- [ ] Stage 6: Provider 数据外置
+- [x] Stage 5: 后端 Rust 模块拆分 ✅ `v2-stage5-complete`
+- [x] Stage 6: Provider 数据外置 ✅ `v2-stage6-complete`
+
+## 🔧 Phase 4.5: 架构打磨（消除协作瓶颈）
+- [ ] Stage 7: CSS 模块化拆分（1,403行 → 11 文件）🚧
+- [ ] Stage 8: Tab 页面组件拆分（App.tsx 568→~150行）
+- [ ] Stage 9: config.rs 职责拆分（426→~250行）
 
 ## 🏢 Phase 5: 企业级分发
 - [ ] Sentry 错误上报 (opt-in)

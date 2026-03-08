@@ -6,83 +6,11 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 
-// ===== Types =====
-type AppPhase = "checking" | "initializing" | "workspace" | "ready";
-type TabId = "dashboard" | "models" | "settings";
-
-interface LogEntry {
-  time: string;
-  level: string;
-  message: string;
-  humanized?: string;
-}
-
-interface ProviderInfo {
-  id: string;
-  name: string;
-  category: string;
-  base_url: string;
-  register_url: string;
-  description: string;
-  models: ModelInfo[];
-}
-
-interface ModelInfo {
-  id: string;
-  name: string;
-  provider: string;
-  is_free: boolean;
-}
-
-interface CurrentConfig {
-  has_api_key: boolean;
-  provider: string | null;
-  model: string | null;
-  base_url: string | null;
-}
-
-// ===== Log humanization =====
-const LOG_TRANSLATIONS: [RegExp, string][] = [
-  [/npm warn/i, "⚠️ 依赖警告（可忽略）"],
-  [/npm error/i, "❌ 依赖安装出错"],
-  [/added \d+ packages/i, "✅ 依赖包安装完成"],
-  [/listening on.*:?(\d+)/i, "✅ 服务已就绪，端口已打开"],
-  [/server (is )?running/i, "✅ 服务正在运行"],
-  [/EADDRINUSE/i, "❌ 端口被占用，请关闭占用程序后重试"],
-  [/ECONNREFUSED/i, "❌ 连接被拒绝，检查网络设置"],
-  [/ENOTFOUND/i, "❌ 域名解析失败，检查网络连接"],
-  [/compiling/i, "⚙️ 正在编译..."],
-  [/deprecated/i, "ℹ️ 有过时的依赖（不影响使用）"],
-  [/ready in/i, "✅ 启动完成！"],
-];
-
-// Strip ANSI escape codes from terminal output
-function stripAnsi(str: string): string {
-  // eslint-disable-next-line no-control-regex
-  return str.replace(/\x1b\[[0-9;]*m/g, "").replace(/\[[\d;]*m/g, "");
-}
-
-function humanizeLog(msg: string): string | undefined {
-  for (const [pattern, translation] of LOG_TRANSLATIONS) {
-    if (pattern.test(msg)) return translation;
-  }
-  return undefined;
-}
-
-function formatUptime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
-
-const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
-  free: { label: "免费注册", icon: "🆓" },
-  provider: { label: "Coding Plan", icon: "💳" },
-  custom: { label: "自定义中转站", icon: "🔧" },
-};
+// ===== Extracted modules =====
+import type { AppPhase, TabId, LogEntry, ProviderInfo, CurrentConfig } from "./types";
+import { CATEGORY_LABELS } from "./types";
+import { humanizeLog, formatUptime } from "./utils/log-humanizer";
+import { stripAnsi } from "./utils/ansi-strip";
 
 // ===== App =====
 function App() {

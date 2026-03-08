@@ -104,7 +104,12 @@
 - [x] Stage 10: 弹窗组件提取 ✅ `v2-stage10-complete`
 - [x] Stage 11: useService Hook 拆分 ✅ `v2-stage11-complete`
 
-## 🏢 Phase 5: 企业级分发
+## 🎨 Phase 5: UI 风格统一（配色 + 图标一致性）
+- [ ] Stage 12: 色彩体系重置（accent-green/blue → 白灰系）🚧
+- [ ] Stage 13: Emoji → Lucide 图标统一（25 处）
+- [ ] Stage 14: 内联色值清理 + 风格细节
+
+## 🏢 Phase 6: 企业级分发
 - [ ] Sentry 错误上报 (opt-in)
 - [ ] Windows 代码签名 (EV 证书)
 - [ ] macOS 公证 (notarization)

@@ -262,31 +262,61 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
         "percent": 90
     }));
 
-    // Find pnpm binary (installed globally alongside node)
-    // Different npm versions install to different locations, so we search multiple candidates
-    let pnpm_candidates: Vec<PathBuf> = if cfg!(target_os = "windows") {
-        vec![
-            node_dir.join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"),
-            node_dir.join("node_modules").join("pnpm").join("dist").join("pnpm.cjs"),
-            node_dir.join("pnpm.cmd"), // npm might create a shim
-        ]
-    } else {
-        vec![
-            node_dir.join("..").join("lib").join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"),
-            node_dir.join("..").join("lib").join("node_modules").join("pnpm").join("dist").join("pnpm.cjs"),
-            node_dir.join("pnpm"), // npm might create a symlink
-        ]
-    };
+    // Find pnpm binary — first try `npm root -g` to dynamically locate the global node_modules,
+    // then fall back to static paths if that fails
+    let mut pnpm_cli: Option<PathBuf> = None;
 
-    let pnpm_cli = pnpm_candidates.iter().find(|p| p.exists())
-        .ok_or_else(|| {
+    // Phase 1: Dynamic discovery via `npm root -g`
+    {
+        let mut root_cmd = std::process::Command::new(&node_bin);
+        root_cmd.arg(&npm_bin).arg("root").arg("-g")
+            .env("PATH", &sandbox_path);
+        #[cfg(target_os = "windows")]
+        root_cmd.creation_flags(0x08000000);
+
+        if let Ok(output) = root_cmd.output() {
+            if output.status.success() {
+                let global_root = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                let root_path = PathBuf::from(&global_root);
+                let candidates = vec![
+                    root_path.join("pnpm").join("bin").join("pnpm.cjs"),
+                    root_path.join("pnpm").join("dist").join("pnpm.cjs"),
+                ];
+                pnpm_cli = candidates.into_iter().find(|p| p.exists());
+            }
+        }
+    }
+
+    // Phase 2: Static fallback paths
+    if pnpm_cli.is_none() {
+        let pnpm_candidates: Vec<PathBuf> = if cfg!(target_os = "windows") {
+            vec![
+                node_dir.join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"),
+                node_dir.join("node_modules").join("pnpm").join("dist").join("pnpm.cjs"),
+                node_dir.join("lib").join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"),
+                node_dir.join("lib").join("node_modules").join("pnpm").join("dist").join("pnpm.cjs"),
+                node_dir.join("pnpm.cmd"),
+                node_dir.join("pnpm"),
+            ]
+        } else {
+            vec![
+                node_dir.join("..").join("lib").join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"),
+                node_dir.join("..").join("lib").join("node_modules").join("pnpm").join("dist").join("pnpm.cjs"),
+                node_dir.join("pnpm"),
+            ]
+        };
+
+        pnpm_cli = pnpm_candidates.iter().find(|p| p.exists()).cloned();
+        if pnpm_cli.is_none() {
             let searched = pnpm_candidates.iter()
                 .map(|p| p.to_string_lossy().to_string())
                 .collect::<Vec<_>>()
                 .join("\n  ");
-            format!("pnpm 安装成功但找不到 pnpm.cjs，已搜索:\n  {}", searched)
-        })?
-        .clone();
+            return Err(format!("pnpm 安装成功但找不到 pnpm.cjs，已搜索:\n  {}", searched));
+        }
+    }
+
+    let pnpm_cli = pnpm_cli.unwrap();
 
     let mut install_cmd = std::process::Command::new(&node_bin);
     install_cmd.arg(&pnpm_cli)

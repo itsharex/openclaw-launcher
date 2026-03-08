@@ -11,6 +11,7 @@ import type { AppPhase, TabId, LogEntry, ProviderInfo, CurrentConfig } from "./t
 import { CATEGORY_LABELS } from "./types";
 import { humanizeLog, formatUptime } from "./utils/log-humanizer";
 import { stripAnsi } from "./utils/ansi-strip";
+import { Modal, ModalFooter } from "./components/ui/Modal";
 
 // ===== App =====
 function App() {
@@ -910,161 +911,83 @@ function App() {
       </div>
 
       {/* Generic Info / QR Code Modal */}
-      <AnimatePresence>
-        {infoModalTitle && (
-          <motion.div
-            className="modal-overlay"
-            onClick={() => setInfoModalTitle("")}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="modal-box"
-              style={{ maxWidth: 360, textAlign: 'center' }}
-              onClick={(e) => e.stopPropagation()}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-            >
-              <div className="modal-title">{infoModalTitle}</div>
-              <div className="modal-desc" style={{ marginTop: 16, marginBottom: 24, padding: 32, background: 'var(--bg-card)', borderRadius: 'var(--radius)' }}>
-                <div style={{ color: 'var(--text-muted)' }}>[ 二维码图片占位符 ]</div>
-                <div style={{ fontSize: 12, marginTop: 12 }}>请在 assets 文件夹替换为你个人的二维码图片</div>
-              </div>
-              <button className="btn-secondary" style={{ width: '100%' }} onClick={() => setInfoModalTitle("")}>关闭</button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Modal show={!!infoModalTitle} onClose={() => setInfoModalTitle("")} title={infoModalTitle} maxWidth={360}>
+        <div className="modal-desc" style={{ marginTop: 16, marginBottom: 24, padding: 32, background: 'var(--bg-card)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+          <div style={{ color: 'var(--text-muted)' }}>[ 二维码图片占位符 ]</div>
+          <div style={{ fontSize: 12, marginTop: 12 }}>请在 assets 文件夹替换为你个人的二维码图片</div>
+        </div>
+        <button className="btn-secondary" style={{ width: '100%' }} onClick={() => setInfoModalTitle("")}>关闭</button>
+      </Modal>
 
       {/* Model Switch Modal */}
-      <AnimatePresence>
-        {showModelSwitchModal && (
-          <motion.div
-            className="modal-overlay"
-            onClick={() => setShowModelSwitchModal(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="modal-box"
-              style={{ maxWidth: 400 }}
-              onClick={(e) => e.stopPropagation()}
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-            >
-              <div className="modal-title">🔄 切换模型</div>
-              <div className="modal-desc">选择要使用的 AI 模型</div>
-              {currentConfig?.provider ? (
-                <div className="model-switch-list" style={{ marginTop: 12 }}>
-                  {providers.find(p => p.id === currentConfig.provider)?.models.map((m) => (
-                    <button
-                      key={m.id}
-                      className={`model-switch-item ${currentConfig.model?.endsWith(m.id) ? "active" : ""}`}
-                      onClick={async () => {
-                        const fullModelId = `${currentConfig.provider}/${m.id}`;
-                        await handleSetModel(fullModelId);
-                        setShowModelSwitchModal(false);
-                      }}
-                    >
-                      <span className="model-switch-name">{m.name}</span>
-                      {currentConfig.model?.endsWith(m.id) && <span className="model-switch-badge">当前</span>}
-                    </button>
-                  )) || <div style={{ color: "var(--text-secondary)" }}>暂无可用模型</div>}
-                </div>
-              ) : (
-                <div style={{ color: "var(--text-secondary)", marginTop: 12 }}>
-                  请先在「模型」标签页配置 API 提供商
-                </div>
-              )}
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-                <button className="btn-secondary" onClick={() => setShowModelSwitchModal(false)}>关闭</button>
-              </div>
-            </motion.div>
-          </motion.div>
+      <Modal show={showModelSwitchModal} onClose={() => setShowModelSwitchModal(false)} title="🔄 切换模型" maxWidth={400}>
+        <div className="modal-desc">选择要使用的 AI 模型</div>
+        {currentConfig?.provider ? (
+          <div className="model-switch-list" style={{ marginTop: 12 }}>
+            {providers.find(p => p.id === currentConfig.provider)?.models.map((m) => (
+              <button
+                key={m.id}
+                className={`model-switch-item ${currentConfig.model?.endsWith(m.id) ? "active" : ""}`}
+                onClick={async () => {
+                  const fullModelId = `${currentConfig.provider}/${m.id}`;
+                  await handleSetModel(fullModelId);
+                  setShowModelSwitchModal(false);
+                }}
+              >
+                <span className="model-switch-name">{m.name}</span>
+                {currentConfig.model?.endsWith(m.id) && <span className="model-switch-badge">当前</span>}
+              </button>
+            )) || <div style={{ color: "var(--text-secondary)" }}>暂无可用模型</div>}
+          </div>
+        ) : (
+          <div style={{ color: "var(--text-secondary)", marginTop: 12 }}>
+            请先在「模型」标签页配置 API 提供商
+          </div>
         )}
-      </AnimatePresence>
+        <ModalFooter>
+          <button className="btn-secondary" onClick={() => setShowModelSwitchModal(false)}>关闭</button>
+        </ModalFooter>
+      </Modal>
 
       {/* Reset Confirmation Modal */}
-      <AnimatePresence>
-        {showResetModal && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="modal-box"
-              style={{ maxWidth: 420 }}
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-            >
-              <div className="modal-title">⚠️ 重置配置</div>
-              <div className="modal-desc" style={{ textAlign: "left" }}>
-                <p style={{ marginBottom: 12 }}>仅重置 API Key 和模型配置（openclaw.json 中的 models/agents 部分）。</p>
-                <p style={{ color: "var(--accent-green)", marginBottom: 4 }}>✅ 不会删除：</p>
-                <ul style={{ paddingLeft: 20, marginBottom: 12, color: "var(--text-secondary)" }}>
-                  <li>对话历史和记忆</li>
-                  <li>Agent 技能和书签</li>
-                  <li>工作区文件</li>
-                </ul>
-                <p style={{ color: "var(--accent-red)", marginBottom: 4 }}>🗑️ 将清除：</p>
-                <ul style={{ paddingLeft: 20, color: "var(--text-secondary)" }}>
-                  <li>API Key 配置</li>
-                  <li>模型选择和默认模型</li>
-                </ul>
-              </div>
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
-                <button className="btn-secondary" onClick={() => setShowResetModal(false)}>取消</button>
-                <button className="btn-danger" onClick={confirmReset}>确认重置</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Modal show={showResetModal} title="⚠️ 重置配置" maxWidth={420}>
+        <div className="modal-desc" style={{ textAlign: "left" }}>
+          <p style={{ marginBottom: 12 }}>仅重置 API Key 和模型配置（openclaw.json 中的 models/agents 部分）。</p>
+          <p style={{ color: "var(--accent-green)", marginBottom: 4 }}>✅ 不会删除：</p>
+          <ul style={{ paddingLeft: 20, marginBottom: 12, color: "var(--text-secondary)" }}>
+            <li>对话历史和记忆</li>
+            <li>Agent 技能和书签</li>
+            <li>工作区文件</li>
+          </ul>
+          <p style={{ color: "var(--accent-red)", marginBottom: 4 }}>🗑️ 将清除：</p>
+          <ul style={{ paddingLeft: 20, color: "var(--text-secondary)" }}>
+            <li>API Key 配置</li>
+            <li>模型选择和默认模型</li>
+          </ul>
+        </div>
+        <ModalFooter>
+          <button className="btn-secondary" onClick={() => setShowResetModal(false)}>取消</button>
+          <button className="btn-danger" onClick={confirmReset}>确认重置</button>
+        </ModalFooter>
+      </Modal>
 
       {/* Reinstall Confirmation Modal */}
-      <AnimatePresence>
-        {showReinstallModal && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="modal-box"
-              style={{ maxWidth: 420 }}
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-            >
-              <div className="modal-title">🔄 重新安装运行环境</div>
-              <div className="modal-desc" style={{ textAlign: "left" }}>
-                <p style={{ marginBottom: 12 }}>这将删除 node_modules 并重新下载所有依赖，可能需要几分钟。</p>
-                <p style={{ color: "var(--accent-green)", marginBottom: 4 }}>适用于：</p>
-                <ul style={{ paddingLeft: 20, marginBottom: 12, color: "var(--text-secondary)" }}>
-                  <li>安装过程出错</li>
-                  <li>环境损坏或依赖缺失</li>
-                  <li>版本升级后不兼容</li>
-                </ul>
-                <p style={{ color: "var(--text-secondary)", fontSize: 12 }}>⏱️ 根据网络情况，可能需要 3-10 分钟</p>
-              </div>
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
-                <button className="btn-secondary" onClick={() => setShowReinstallModal(false)}>取消</button>
-                <button className="btn-danger" onClick={confirmReinstall}>确认重新安装</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Modal show={showReinstallModal} title="🔄 重新安装运行环境" maxWidth={420}>
+        <div className="modal-desc" style={{ textAlign: "left" }}>
+          <p style={{ marginBottom: 12 }}>这将删除 node_modules 并重新下载所有依赖，可能需要几分钟。</p>
+          <p style={{ color: "var(--accent-green)", marginBottom: 4 }}>适用于：</p>
+          <ul style={{ paddingLeft: 20, marginBottom: 12, color: "var(--text-secondary)" }}>
+            <li>安装过程出错</li>
+            <li>环境损坏或依赖缺失</li>
+            <li>版本升级后不兼容</li>
+          </ul>
+          <p style={{ color: "var(--text-secondary)", fontSize: 12 }}>⏱️ 根据网络情况，可能需要 3-10 分钟</p>
+        </div>
+        <ModalFooter>
+          <button className="btn-secondary" onClick={() => setShowReinstallModal(false)}>取消</button>
+          <button className="btn-danger" onClick={confirmReinstall}>确认重新安装</button>
+        </ModalFooter>
+      </Modal>
 
       {/* Connection Repair Toast */}
       <AnimatePresence>

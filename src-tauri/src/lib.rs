@@ -1,7 +1,10 @@
 mod config;
+mod download;
 mod environment;
-mod openclaw;
+mod installer;
+mod paths;
 mod service;
+mod setup;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -14,17 +17,19 @@ pub fn run() {
             environment::check_node_exists,
             environment::download_and_install_node,
             environment::get_environment_info,
-            // OpenClaw source & deps & config
-            openclaw::check_openclaw_exists,
-            openclaw::check_node_modules_exists,
-            openclaw::check_config_exists,
-            openclaw::download_openclaw_source,
-            openclaw::run_npm_install,
-            openclaw::inject_default_config,
-            openclaw::inject_default_models,
-            openclaw::install_preset_skills,
-            openclaw::setup_openclaw,
-            openclaw::reinstall_environment,
+            // Download
+            download::download_openclaw_source,
+            // Installer
+            installer::run_npm_install,
+            // Setup orchestration
+            setup::check_openclaw_exists,
+            setup::check_node_modules_exists,
+            setup::check_config_exists,
+            setup::inject_default_config,
+            setup::inject_default_models,
+            setup::install_preset_skills,
+            setup::setup_openclaw,
+            setup::reinstall_environment,
             // Service lifecycle
             service::check_port_available,
             service::is_service_running,

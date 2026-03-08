@@ -8,7 +8,7 @@ use tauri::Emitter;
 use std::os::windows::process::CommandExt;
 
 use crate::environment;
-use crate::openclaw;
+use crate::paths;
 
 /// Check if a port is truly available by:
 /// 1. Trying to bind to it (standard OS check)
@@ -91,7 +91,7 @@ pub async fn start_service(
 
     // Get paths
     let node_bin = environment::get_node_binary()?;
-    let openclaw_dir = openclaw::get_openclaw_dir()?;
+    let openclaw_dir = paths::get_openclaw_dir()?;
 
     if !openclaw_dir.join("package.json").exists() {
         return Err("OpenClaw 未安装，请先完成初始化".to_string());

@@ -313,7 +313,7 @@ function App() {
                             删除依赖并重新安装，适用于安装失败或环境损坏
                           </div>
                         </div>
-                        <button className="btn-secondary" onClick={handleReinstall} disabled={reinstalling || running}>
+                        <button className="btn-secondary" onClick={handleReinstall} disabled={reinstalling}>
                           {reinstalling ? "安装中..." : "🔄 重新安装"}
                         </button>
                       </div>

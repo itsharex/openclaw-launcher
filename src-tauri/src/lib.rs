@@ -24,6 +24,7 @@ pub fn run() {
             openclaw::inject_default_models,
             openclaw::install_preset_skills,
             openclaw::setup_openclaw,
+            openclaw::reinstall_environment,
             // Service lifecycle
             service::check_port_available,
             service::is_service_running,

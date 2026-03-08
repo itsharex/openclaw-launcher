@@ -27,11 +27,15 @@ pub fn check_openclaw_exists() -> Result<bool, String> {
     Ok(dir.join("package.json").exists())
 }
 
-/// Check if node_modules is installed
+/// Check if node_modules is fully installed
+/// Requires both node_modules/.pnpm directory AND .install_complete marker
 #[tauri::command]
 pub fn check_node_modules_exists() -> Result<bool, String> {
     let dir = get_openclaw_dir()?;
-    Ok(dir.join("node_modules").exists())
+    let node_modules = dir.join("node_modules");
+    let marker = node_modules.join(".install_complete");
+    // Only consider installed if both .pnpm exists AND our marker is present
+    Ok(node_modules.exists() && node_modules.join(".pnpm").exists() && marker.exists())
 }
 
 /// Download OpenClaw source code as ZIP and extract.
@@ -187,15 +191,17 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
     }
 
     let node_modules = openclaw_dir.join("node_modules");
+    let install_marker = node_modules.join(".install_complete");
+
     if node_modules.exists() {
-        // Check if node_modules was installed by pnpm (has .pnpm directory)
-        if node_modules.join(".pnpm").exists() {
+        // Check if node_modules was fully installed (has .pnpm AND our completion marker)
+        if node_modules.join(".pnpm").exists() && install_marker.exists() {
             return Ok("node_modules already installed (pnpm)".to_string());
         }
-        // node_modules exists but was installed by npm — auto-cleanup for pnpm reinstall
+        // node_modules exists but is incomplete or corrupted — auto-cleanup
         let _ = app.emit("setup-progress", serde_json::json!({
             "stage": "npm_install",
-            "message": "检测到旧版依赖，正在自动清理后重新安装...",
+            "message": "检测到不完整的依赖，正在自动清理后重新安装...",
             "percent": 86
         }));
         let _ = std::fs::remove_dir_all(&node_modules);
@@ -314,16 +320,60 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
-        return Err(format!(
-            "pnpm install 失败:\nstdout: {}\nstderr: {}",
-            stdout, stderr
-        ));
+
+        // ===== Auto-retry: clean node_modules and try once more =====
+        let _ = app.emit("setup-progress", serde_json::json!({
+            "stage": "npm_install",
+            "message": "⚠️ 安装遇到问题，正在清理环境并重试...",
+            "percent": 93
+        }));
+
+        let node_modules_retry = openclaw_dir.join("node_modules");
+        let _ = std::fs::remove_dir_all(&node_modules_retry);
+
+        // Retry pnpm install
+        let mut retry_cmd = std::process::Command::new(&node_bin);
+        retry_cmd.arg(&pnpm_cli)
+            .arg("install")
+            .current_dir(&openclaw_dir)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .env("PATH", &sandbox_path);
+
+        #[cfg(target_os = "windows")]
+        retry_cmd.creation_flags(0x08000000);
+
+        if use_mirror {
+            retry_cmd.env("npm_config_registry", "https://registry.npmmirror.com");
+        }
+
+        let retry_output = retry_cmd.output()
+            .map_err(|e| format!("重试 pnpm install 失败: {}", e))?;
+
+        if !retry_output.status.success() {
+            let retry_stderr = String::from_utf8_lossy(&retry_output.stderr);
+            return Err(format!(
+                "pnpm install 失败 (已重试一次):\nstdout: {}\nstderr: {}\n\n重试 stderr: {}",
+                stdout, stderr, retry_stderr
+            ));
+        }
     }
 
     // Verify node_modules was created
     if !openclaw_dir.join("node_modules").exists() {
         return Err("pnpm install 执行完毕但 node_modules 目录未创建".to_string());
     }
+
+    // Write .install_complete marker to indicate successful installation
+    let marker_path = openclaw_dir.join("node_modules").join(".install_complete");
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs().to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+    let _ = std::fs::write(&marker_path, format!(
+        "installed_at={}\npnpm=true\n",
+        timestamp
+    ));
 
     let _ = app.emit("setup-progress", serde_json::json!({
         "stage": "npm_done",
@@ -550,4 +600,32 @@ pub async fn setup_openclaw(app: tauri::AppHandle) -> Result<String, String> {
     }));
 
     Ok("OpenClaw setup completed successfully".to_string())
+}
+
+/// Clean up node_modules and re-run the full setup pipeline.
+/// Used as a manual recovery mechanism when the user's environment is corrupted.
+#[tauri::command]
+pub async fn reinstall_environment(app: tauri::AppHandle) -> Result<String, String> {
+    let openclaw_dir = get_openclaw_dir()?;
+    let node_modules = openclaw_dir.join("node_modules");
+
+    // Step 1: Remove existing node_modules
+    if node_modules.exists() {
+        let _ = app.emit("setup-progress", serde_json::json!({
+            "stage": "cleanup",
+            "message": "正在清理旧的依赖目录...",
+            "percent": 5
+        }));
+        std::fs::remove_dir_all(&node_modules)
+            .map_err(|e| format!("清理 node_modules 失败: {}", e))?;
+    }
+
+    let _ = app.emit("setup-progress", serde_json::json!({
+        "stage": "cleanup",
+        "message": "清理完成，开始重新安装...",
+        "percent": 10
+    }));
+
+    // Step 2: Re-run the full setup pipeline
+    setup_openclaw(app).await
 }

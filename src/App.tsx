@@ -382,6 +382,27 @@ function App() {
     }
   };
 
+  const [reinstalling, setReinstalling] = useState(false);
+
+  const handleReinstall = async () => {
+    if (!confirm("确定要重新安装运行环境吗？\n\n这将删除 node_modules 并重新下载所有依赖，可能需要几分钟。\n\n适用于安装出错或环境损坏的情况。")) return;
+    setReinstalling(true);
+    setPhase("initializing");
+    setProgress(0);
+    setProgressMsg("正在清理并重新安装...");
+    try {
+      await invoke("reinstall_environment");
+      setPhase("ready");
+      addLog("success", "🎉 环境重新安装完成！");
+      await checkApiKey();
+    } catch (err) {
+      addLog("error", `重新安装失败: ${err}`);
+      setProgressMsg(`❌ 重新安装失败: ${err}`);
+    } finally {
+      setReinstalling(false);
+    }
+  };
+
   const getStatusClass = () => {
     if (loading) return "loading";
     if (running) return "running";
@@ -809,7 +830,19 @@ function App() {
                       <button className="btn-secondary" onClick={() => setShowKeyModal(true)}>🔑 生命周期重配</button>
                     </div>
 
-                    <div className="setting-item setting-danger" style={{ marginTop: 24 }}>
+                    <div className="setting-item" style={{ marginTop: 24 }}>
+                      <div className="setting-left">
+                        <div className="setting-label">重新安装环境</div>
+                        <div className="setting-value" style={{ fontSize: 12 }}>
+                          删除依赖并重新安装，适用于安装失败或环境损坏
+                        </div>
+                      </div>
+                      <button className="btn-secondary" onClick={handleReinstall} disabled={reinstalling || running}>
+                        {reinstalling ? "安装中..." : "🔄 重新安装"}
+                      </button>
+                    </div>
+
+                    <div className="setting-item setting-danger" style={{ marginTop: 16 }}>
                       <div className="setting-left">
                         <div className="setting-label" style={{ color: 'var(--accent-red)' }}>恢复出厂设置</div>
                         <div className="setting-value" style={{ fontSize: 12 }}>

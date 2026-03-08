@@ -272,9 +272,11 @@ pub fn save_api_config(
   "gateway": {{
     "mode": "local",
     "auth": {{
+      "mode": "token",
       "token": "openclaw-launcher-local"
     }},
     "controlUi": {{
+      "allowInsecureAuth": true,
       "dangerouslyDisableDeviceAuth": true
     }}
   }}

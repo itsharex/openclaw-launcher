@@ -440,11 +440,20 @@ pub fn inject_default_config(app: tauri::AppHandle) -> Result<String, String> {
                 let patched = if content.contains("\"controlUi\"") {
                     content.clone() // already has controlUi section, skip
                 } else if content.contains("\"gateway\"") {
-                    // Insert controlUi block into existing gateway section
-                    content.replace(
+                    // Insert controlUi block + auth.mode into existing gateway section
+                    let step1 = content.replace(
                         "\"auth\":",
-                        "\"controlUi\": {\n      \"dangerouslyDisableDeviceAuth\": true\n    },\n    \"auth\":",
-                    )
+                        "\"controlUi\": {\n      \"allowInsecureAuth\": true,\n      \"dangerouslyDisableDeviceAuth\": true\n    },\n    \"auth\":",
+                    );
+                    // Also ensure auth.mode is set to "token"
+                    if !step1.contains("\"mode\": \"token\"") && step1.contains("\"token\": \"") {
+                        step1.replace(
+                            "\"auth\": {",
+                            "\"auth\": {\n      \"mode\": \"token\",",
+                        )
+                    } else {
+                        step1
+                    }
                 } else {
                     content.clone() // no gateway section at all, skip
                 };
@@ -487,9 +496,11 @@ pub fn inject_default_config(app: tauri::AppHandle) -> Result<String, String> {
   "gateway": {{
     "mode": "local",
     "auth": {{
+      "mode": "token",
       "token": "openclaw-launcher-local"
     }},
     "controlUi": {{
+      "allowInsecureAuth": true,
       "dangerouslyDisableDeviceAuth": true
     }}
   }},

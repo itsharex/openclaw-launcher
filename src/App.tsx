@@ -1,381 +1,57 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { Activity, Cpu, SlidersHorizontal, Settings as SettingsIcon, Hexagon, Box, Github, RefreshCw, Network, Play, Loader2 } from "lucide-react";
-import { open } from "@tauri-apps/plugin-dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
 
 // ===== Extracted modules =====
-import type { AppPhase, TabId, LogEntry, ProviderInfo, CurrentConfig } from "./types";
+import type { TabId } from "./types";
 import { CATEGORY_LABELS } from "./types";
-import { humanizeLog, formatUptime } from "./utils/log-humanizer";
-import { stripAnsi } from "./utils/ansi-strip";
+import { formatUptime } from "./utils/log-humanizer";
 import { Modal, ModalFooter } from "./components/ui/Modal";
 import { Header } from "./components/Header";
 import { ApiKeyModal } from "./components/ApiKeyModal";
 import { SetupWizard } from "./components/SetupWizard";
+import { useLogs } from "./hooks/useLogs";
+import { useConfig } from "./hooks/useConfig";
+import { useService } from "./hooks/useService";
 
 // ===== App =====
 function App() {
-  const [phase, setPhase] = useState<AppPhase>("checking");
-  const [running, setRunning] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [progressMsg, setProgressMsg] = useState("正在检查环境...");
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [showRawLogs, setShowRawLogs] = useState(false);
-  const [uptime, setUptime] = useState(0);
-  const [servicePort, setServicePort] = useState(18789);
-  const [workspacePath, setWorkspacePath] = useState("");
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [activeSettingsTab, setActiveSettingsTab] = useState<"general" | "logs" | "about">("general");
-  const logRef = useRef<HTMLDivElement>(null);
-  const uptimeRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [running, setRunning] = useState(false);
 
-  // Model/Config state
-  const [providers, setProviders] = useState<ProviderInfo[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("free");
-  const [selectedProvider, setSelectedProvider] = useState("");
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const [baseUrlInput, setBaseUrlInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("");
-  const [configSaving, setConfigSaving] = useState(false);
-  const [configStatus, setConfigStatus] = useState("");
-  const [currentConfig, setCurrentConfig] = useState<CurrentConfig | null>(null);
+  // === Hooks ===
+  const {
+    logs, showRawLogs, setShowRawLogs,
+    repairToast, setRepairToast,
+    logRef, addLog,
+  } = useLogs();
 
-  // Mandatory API Key modal
-  const [showKeyModal, setShowKeyModal] = useState(false);
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [showReinstallModal, setShowReinstallModal] = useState(false);
-  const [showModelSwitchModal, setShowModelSwitchModal] = useState(false);
-  const [infoModalTitle, setInfoModalTitle] = useState("");
-  const [repairToast, setRepairToast] = useState(false);
-  const [repairing, setRepairing] = useState(false);
+  const {
+    providers, selectedCategory, setSelectedCategory,
+    selectedProvider, setSelectedProvider,
+    apiKeyInput, setApiKeyInput, baseUrlInput, setBaseUrlInput,
+    selectedModel, setSelectedModel,
+    configSaving, configStatus, setConfigStatus,
+    currentConfig, filteredProviders,
+    showKeyModal, setShowKeyModal, showResetModal, setShowResetModal,
+    showReinstallModal, setShowReinstallModal,
+    showModelSwitchModal, setShowModelSwitchModal,
+    infoModalTitle, setInfoModalTitle,
+    checkApiKey, handleSaveConfig, handleSetModel, handleOpenRegister,
+    handleReset, confirmReset, handleReinstall,
+  } = useConfig({ addLog, running, setRunning });
 
-  const addLog = (level: string, message: string) => {
-    const now = new Date();
-    const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
-    const cleanMsg = stripAnsi(message);
-    const humanized = humanizeLog(cleanMsg);
-    setLogs((prev) => [...prev.slice(-300), { time, level, message: cleanMsg, humanized }]);
-
-    // Auto-detect connection auth failures
-    if (cleanMsg.includes("device signature invalid") || cleanMsg.includes("signature invalid")) {
-      setRepairToast(true);
-    }
-  };
-
-  // Uptime counter
-  useEffect(() => {
-    if (running) {
-      setUptime(0);
-      uptimeRef.current = setInterval(() => setUptime((u) => u + 1), 1000);
-    } else {
-      if (uptimeRef.current) clearInterval(uptimeRef.current);
-      setUptime(0);
-    }
-    return () => { if (uptimeRef.current) clearInterval(uptimeRef.current); };
-  }, [running]);
-
-  // Auto-scroll logs
-  useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [logs]);
-
-  // Load providers on mount
-  useEffect(() => {
-    invoke<ProviderInfo[]>("get_providers").then(setProviders).catch(() => { });
-  }, []);
-
-  // On mount: check environment + register event listeners
-  useEffect(() => {
-    checkEnvironment();
-
-    const unlistenProgress = listen<{ stage: string; message: string; percent: number }>(
-      "setup-progress",
-      (event) => {
-        setProgress(event.payload.percent);
-        setProgressMsg(event.payload.message);
-        addLog("info", event.payload.message);
-      }
-    );
-
-    const unlistenLogs = listen<{ level: string; message: string }>(
-      "service-log",
-      (event) => addLog(event.payload.level, event.payload.message)
-    );
-
-    const unlistenHeartbeat = listen("service-heartbeat", async () => {
-      try {
-        const alive = await invoke<boolean>("is_service_running");
-        if (!alive) {
-          setRunning(false);
-          addLog("error", "⚠️ OpenClaw 服务进程已意外退出");
-        }
-      } catch { /* ignore */ }
-    });
-
-    const unlistenPort = listen<{ port: number }>(
-      "service-port",
-      (event) => setServicePort(event.payload.port)
-    );
-
-    return () => {
-      unlistenProgress.then((fn) => fn());
-      unlistenLogs.then((fn) => fn());
-      unlistenHeartbeat.then((fn) => fn());
-      unlistenPort.then((fn) => fn());
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ===== Actions =====
-  const checkEnvironment = async () => {
-    try {
-      const nodeOk = await invoke<boolean>("check_node_exists");
-      const openclawOk = await invoke<boolean>("check_openclaw_exists");
-      const modulesOk = await invoke<boolean>("check_node_modules_exists");
-      const serviceRunning = await invoke<boolean>("is_service_running");
-
-      if (nodeOk && openclawOk && modulesOk) {
-        const configOk = await invoke<boolean>("check_config_exists");
-        if (!configOk) {
-          setPhase("workspace");
-          addLog("info", "首次使用，请选择工作区目录");
-        } else {
-          setPhase("ready");
-          setRunning(serviceRunning);
-          addLog("success", "✅ 环境检查通过，所有组件就绪");
-          await checkApiKey();
-        }
-      } else {
-        setPhase("initializing");
-        addLog("info", "首次启动，开始初始化环境...");
-        await runSetup();
-      }
-    } catch (err) {
-      addLog("error", `环境检查失败: ${err}`);
-      setPhase("initializing");
-      await runSetup();
-    }
-  };
-
-  const checkApiKey = async () => {
-    try {
-      // Ensure gateway config has correct auth fields (patches ~/.openclaw/openclaw.json)
-      await invoke("migrate_gateway_config").catch(() => { });
-      const config = await invoke<CurrentConfig>("get_current_config");
-      setCurrentConfig(config);
-      if (!config.has_api_key) {
-        setShowKeyModal(true);
-      }
-    } catch {
-      setShowKeyModal(true);
-    }
-  };
-
-  const runSetup = async () => {
-    setLoading(true);
-    try {
-      await invoke("setup_openclaw");
-      setPhase("ready");
-      addLog("success", "🎉 OpenClaw 初始化完成！");
-      await checkApiKey();
-    } catch (err) {
-      addLog("error", `初始化失败: ${err}`);
-      setProgressMsg(`❌ 初始化失败: ${err}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSelectFolder = async () => {
-    const selected = await open({ directory: true, multiple: false, title: "选择你的工作区目录" });
-    if (selected && typeof selected === "string") setWorkspacePath(selected);
-  };
-
-  const handleConfirmWorkspace = async () => {
-    setLoading(true);
-    try {
-      await invoke("inject_default_config");
-      await invoke("inject_default_models");
-      addLog("success", `✅ 工作区已配置: ${workspacePath || "默认目录"}`);
-      setPhase("ready");
-      await checkApiKey();
-    } catch (err) {
-      addLog("error", `配置失败: ${err}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSwitchWorkspace = async () => {
-    const selected = await open({ directory: true, multiple: false, title: "切换工作区目录" });
-    if (selected && typeof selected === "string") {
-      setWorkspacePath(selected);
-      setLoading(true);
-      try {
-        await invoke("inject_default_config");
-        addLog("success", `✅ 工作区已切换到: ${selected}`);
-      } catch (err) {
-        addLog("error", `切换失败: ${err}`);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleStart = async () => {
-    setLoading(true);
-    try {
-      await invoke("start_service");
-      setRunning(true);
-    } catch (err) {
-      addLog("error", `启动失败: ${err}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStop = async () => {
-    setLoading(true);
-    try {
-      await invoke("stop_service");
-      setRunning(false);
-    } catch (err) {
-      addLog("error", `停止失败: ${err}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveConfig = async () => {
-    if (!apiKeyInput.trim()) { setConfigStatus("❌ 请输入 API Key"); return; }
-    setConfigSaving(true);
-    setConfigStatus("");
-    try {
-      const result = await invoke<string>("save_api_config", {
-        provider: selectedProvider || "custom",
-        apiKey: apiKeyInput,
-        baseUrl: baseUrlInput || null,
-        model: selectedModel || null,
-      });
-      setConfigStatus(result);
-      addLog("success", result);
-      setCurrentConfig({ has_api_key: true, provider: selectedProvider, model: selectedModel, base_url: baseUrlInput || null });
-      setShowKeyModal(false);
-
-      // Auto-restart service if running, so new config takes effect
-      if (running) {
-        addLog("info", "🔄 正在重启服务以加载新配置...");
-        try {
-          await invoke("stop_service");
-          setRunning(false);
-          await new Promise(r => setTimeout(r, 1000));
-          await invoke("start_service");
-          setRunning(true);
-          addLog("success", "✅ 服务已重启，新配置生效");
-        } catch (err) {
-          addLog("error", `重启服务失败: ${err}`);
-        }
-      }
-    } catch (err) {
-      setConfigStatus(`❌ 保存失败: ${err}`);
-    } finally {
-      setConfigSaving(false);
-    }
-  };
-
-  const handleSetModel = async (modelId: string) => {
-    try {
-      const result = await invoke<string>("set_default_model", { modelId });
-      setSelectedModel(modelId);
-      setConfigStatus(result);
-      addLog("success", result);
-      if (currentConfig) setCurrentConfig({ ...currentConfig, model: modelId });
-    } catch (err) {
-      setConfigStatus(`❌ 切换失败: ${err}`);
-    }
-  };
-
-  const handleOpenRegister = async (providerId: string) => {
-    try { await invoke("open_provider_register", { providerId }); } catch { /* */ }
-  };
-
-  const handleReset = () => {
-    setShowResetModal(true);
-  };
-
-  const confirmReset = async () => {
-    setShowResetModal(false);
-    try {
-      const result = await invoke<string>("reset_config");
-      setCurrentConfig({ has_api_key: false, provider: null, model: null, base_url: null });
-      setApiKeyInput("");
-      setSelectedProvider("");
-      setSelectedModel("");
-      setBaseUrlInput("");
-      setConfigStatus("");
-      addLog("success", result);
-      setShowKeyModal(true);
-    } catch (err) {
-      addLog("error", `重置失败: ${err}`);
-    }
-  };
-
-  const [reinstalling, setReinstalling] = useState(false);
-
-  const handleReinstall = () => {
-    setShowReinstallModal(true);
-  };
-
-  const confirmReinstall = async () => {
-    setShowReinstallModal(false);
-    setReinstalling(true);
-    setPhase("initializing");
-    setProgress(0);
-    setProgressMsg("正在清理并重新安装...");
-    try {
-      await invoke("reinstall_environment");
-      setPhase("ready");
-      addLog("success", "🎉 环境重新安装完成！");
-      await checkApiKey();
-    } catch (err) {
-      addLog("error", `重新安装失败: ${err}`);
-      setProgressMsg(`❌ 重新安装失败: ${err}`);
-    } finally {
-      setReinstalling(false);
-    }
-  };
-
-  const handleRepairConnection = async () => {
-    setRepairing(true);
-    setRepairToast(false);
-    addLog("info", "🔧 开始一键修复连接...");
-    try {
-      // Step 1: Stop service if running
-      if (running) {
-        addLog("info", "正在停止服务...");
-        await invoke("stop_service");
-        setRunning(false);
-        await new Promise(r => setTimeout(r, 1500));
-      }
-      // Step 2: Restart service
-      addLog("info", "正在重新启动服务...");
-      await invoke("start_service");
-      setRunning(true);
-      await new Promise(r => setTimeout(r, 2000));
-      // Step 3: Open browser with cache-busting timestamp
-      const ts = Date.now();
-      await invoke("open_url", { url: `http://localhost:${servicePort}?token=openclaw-launcher-local&_t=${ts}` });
-      addLog("success", "✅ 连接修复完成，已重新打开浏览器");
-    } catch (err) {
-      addLog("error", `修复失败: ${err}`);
-    } finally {
-      setRepairing(false);
-    }
-  };
+  const {
+    phase, loading,
+    progress, progressMsg, uptime, servicePort,
+    workspacePath, reinstalling, repairing,
+    handleSelectFolder, handleConfirmWorkspace, handleSwitchWorkspace,
+    handleStart, handleStop,
+    confirmReinstall, handleRepairConnection,
+  } = useService({ addLog, checkApiKey, setRepairToast, running, setRunning });
 
   const getStatusClass = () => {
     if (loading) return "loading";
@@ -383,8 +59,6 @@ function App() {
     if (phase !== "ready") return "loading";
     return "idle";
   };
-
-  const filteredProviders = providers.filter((p) => p.category === selectedCategory);
 
   // Find display names for current config
   const currentProviderName = currentConfig?.provider

@@ -15,6 +15,9 @@ import { SetupWizard } from "./components/SetupWizard";
 import { DashboardTab } from "./components/DashboardTab";
 import { ModelsTab } from "./components/ModelsTab";
 import { SettingsTab } from "./components/SettingsTab";
+import { ModelSwitchModal } from "./components/ModelSwitchModal";
+import { ConfirmModal } from "./components/ConfirmModal";
+import { RepairToast } from "./components/RepairToast";
 import { useLogs } from "./hooks/useLogs";
 import { useConfig } from "./hooks/useConfig";
 import { useService } from "./hooks/useService";
@@ -184,118 +187,61 @@ function App() {
       </Modal>
 
       {/* Model Switch Modal */}
-      <Modal show={showModelSwitchModal} onClose={() => setShowModelSwitchModal(false)} title="🔄 切换模型" maxWidth={400}>
-        <div className="modal-desc">选择要使用的 AI 模型</div>
-        {currentConfig?.provider ? (
-          <div className="model-switch-list" style={{ marginTop: 12 }}>
-            {providers.find(p => p.id === currentConfig.provider)?.models.map((m) => (
-              <button
-                key={m.id}
-                className={`model-switch-item ${currentConfig.model?.endsWith(m.id) ? "active" : ""}`}
-                onClick={async () => {
-                  const fullModelId = `${currentConfig.provider}/${m.id}`;
-                  await handleSetModel(fullModelId);
-                  setShowModelSwitchModal(false);
-                }}
-              >
-                <span className="model-switch-name">{m.name}</span>
-                {currentConfig.model?.endsWith(m.id) && <span className="model-switch-badge">当前</span>}
-              </button>
-            )) || <div style={{ color: "var(--text-secondary)" }}>暂无可用模型</div>}
-          </div>
-        ) : (
-          <div style={{ color: "var(--text-secondary)", marginTop: 12 }}>
-            请先在「模型」标签页配置 API 提供商
-          </div>
-        )}
-        <ModalFooter>
-          <button className="btn-secondary" onClick={() => setShowModelSwitchModal(false)}>关闭</button>
-        </ModalFooter>
-      </Modal>
+      <ModelSwitchModal
+        show={showModelSwitchModal}
+        onClose={() => setShowModelSwitchModal(false)}
+        providers={providers}
+        currentConfig={currentConfig}
+        handleSetModel={handleSetModel}
+      />
 
       {/* Reset Confirmation Modal */}
-      <Modal show={showResetModal} title="⚠️ 重置配置" maxWidth={420}>
-        <div className="modal-desc" style={{ textAlign: "left" }}>
-          <p style={{ marginBottom: 12 }}>仅重置 API Key 和模型配置（openclaw.json 中的 models/agents 部分）。</p>
-          <p style={{ color: "var(--accent-green)", marginBottom: 4 }}>✅ 不会删除：</p>
-          <ul style={{ paddingLeft: 20, marginBottom: 12, color: "var(--text-secondary)" }}>
-            <li>对话历史和记忆</li>
-            <li>Agent 技能和书签</li>
-            <li>工作区文件</li>
-          </ul>
-          <p style={{ color: "var(--accent-red)", marginBottom: 4 }}>🗑️ 将清除：</p>
-          <ul style={{ paddingLeft: 20, color: "var(--text-secondary)" }}>
-            <li>API Key 配置</li>
-            <li>模型选择和默认模型</li>
-          </ul>
-        </div>
-        <ModalFooter>
-          <button className="btn-secondary" onClick={() => setShowResetModal(false)}>取消</button>
-          <button className="btn-danger" onClick={confirmReset}>确认重置</button>
-        </ModalFooter>
-      </Modal>
+      <ConfirmModal
+        show={showResetModal}
+        title="⚠️ 重置配置"
+        onCancel={() => setShowResetModal(false)}
+        onConfirm={confirmReset}
+        confirmLabel="确认重置"
+      >
+        <p style={{ marginBottom: 12 }}>仅重置 API Key 和模型配置（openclaw.json 中的 models/agents 部分）。</p>
+        <p style={{ color: "var(--accent-green)", marginBottom: 4 }}>✅ 不会删除：</p>
+        <ul style={{ paddingLeft: 20, marginBottom: 12, color: "var(--text-secondary)" }}>
+          <li>对话历史和记忆</li>
+          <li>Agent 技能和书签</li>
+          <li>工作区文件</li>
+        </ul>
+        <p style={{ color: "var(--accent-red)", marginBottom: 4 }}>🗑️ 将清除：</p>
+        <ul style={{ paddingLeft: 20, color: "var(--text-secondary)" }}>
+          <li>API Key 配置</li>
+          <li>模型选择和默认模型</li>
+        </ul>
+      </ConfirmModal>
 
       {/* Reinstall Confirmation Modal */}
-      <Modal show={showReinstallModal} title="🔄 重新安装运行环境" maxWidth={420}>
-        <div className="modal-desc" style={{ textAlign: "left" }}>
-          <p style={{ marginBottom: 12 }}>这将删除 node_modules 并重新下载所有依赖，可能需要几分钟。</p>
-          <p style={{ color: "var(--accent-green)", marginBottom: 4 }}>适用于：</p>
-          <ul style={{ paddingLeft: 20, marginBottom: 12, color: "var(--text-secondary)" }}>
-            <li>安装过程出错</li>
-            <li>环境损坏或依赖缺失</li>
-            <li>版本升级后不兼容</li>
-          </ul>
-          <p style={{ color: "var(--text-secondary)", fontSize: 12 }}>⏱️ 根据网络情况，可能需要 3-10 分钟</p>
-        </div>
-        <ModalFooter>
-          <button className="btn-secondary" onClick={() => setShowReinstallModal(false)}>取消</button>
-          <button className="btn-danger" onClick={confirmReinstall}>确认重新安装</button>
-        </ModalFooter>
-      </Modal>
+      <ConfirmModal
+        show={showReinstallModal}
+        title="🔄 重新安装运行环境"
+        onCancel={() => setShowReinstallModal(false)}
+        onConfirm={confirmReinstall}
+        confirmLabel="确认重新安装"
+      >
+        <p style={{ marginBottom: 12 }}>这将删除 node_modules 并重新下载所有依赖，可能需要几分钟。</p>
+        <p style={{ color: "var(--accent-green)", marginBottom: 4 }}>适用于：</p>
+        <ul style={{ paddingLeft: 20, marginBottom: 12, color: "var(--text-secondary)" }}>
+          <li>安装过程出错</li>
+          <li>环境损坏或依赖缺失</li>
+          <li>版本升级后不兼容</li>
+        </ul>
+        <p style={{ color: "var(--text-secondary)", fontSize: 12 }}>⏱️ 根据网络情况，可能需要 3-10 分钟</p>
+      </ConfirmModal>
 
       {/* Connection Repair Toast */}
-      <AnimatePresence>
-        {repairToast && (
-          <motion.div
-            className="repair-toast"
-            initial={{ opacity: 0, y: 50, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: 50, x: '-50%' }}
-            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-            style={{
-              position: 'fixed', bottom: 24, left: '50%',
-              background: 'linear-gradient(135deg, rgba(30,30,40,0.98), rgba(40,30,30,0.98))',
-              border: '1px solid var(--accent-red, #ff4444)',
-              borderRadius: 'var(--radius, 12px)',
-              padding: '16px 24px', zIndex: 9999,
-              display: 'flex', alignItems: 'center', gap: 16,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-              maxWidth: 480,
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, marginBottom: 4, color: '#ff6b6b' }}>⚠️ 检测到连接认证失败</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted, #888)' }}>
-                设备签名校验异常，点击一键修复（重启服务 + 刷新会话）
-              </div>
-            </div>
-            <button
-              className="btn-primary"
-              style={{ whiteSpace: 'nowrap', padding: '8px 16px', fontSize: 13 }}
-              onClick={handleRepairConnection}
-              disabled={repairing}
-            >
-              {repairing ? "修复中..." : "🔧 一键修复"}
-            </button>
-            <button
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
-              onClick={() => setRepairToast(false)}
-              title="关闭"
-            >×</button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+      <RepairToast
+        show={repairToast}
+        repairing={repairing}
+        onRepair={handleRepairConnection}
+        onDismiss={() => setRepairToast(false)}
+      />
       {/* Mandatory API Key Modal (renders on top of everything) */}
       <ApiKeyModal
         show={showKeyModal}
@@ -320,7 +266,7 @@ function App() {
         onSaveConfig={handleSaveConfig}
         onOpenRegister={handleOpenRegister}
       />
-    </div>
+    </div >
   );
 }
 

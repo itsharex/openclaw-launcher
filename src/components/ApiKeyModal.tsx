@@ -196,7 +196,6 @@ export function ApiKeyModal({
                             onClick={onSaveConfig} disabled={configSaving || !apiKeyInput.trim()}>
                             {configSaving ? "保存中..." : "保存并开始使用"}
                         </button>
-                        {configStatus && <div className="config-status">{configStatus}</div>}
                     </motion.div>
                 </motion.div>
             )}

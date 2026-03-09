@@ -20,16 +20,18 @@ export function ModelSelectWithCustom({ models, selectedModel, onSelect }: Model
     const [customValue, setCustomValue] = useState("");
 
     const presetIds = models.map(m => m.id);
-    const isCustomActive = showCustom || (selectedModel && !presetIds.includes(selectedModel));
+    // Only show custom input when user explicitly toggled it
+    const isCustomActive = showCustom;
 
     return (
         <div className="model-select-list">
             {models.map((m) => (
                 <button key={m.id}
-                    className={`model-select-btn ${selectedModel === m.id ? "active" : ""}`}
+                    className={`model-select-btn ${!showCustom && selectedModel === m.id ? "active" : ""}`}
                     data-text={m.name}
                     onClick={() => {
                         setShowCustom(false);
+                        setCustomValue("");
                         onSelect(m.id);
                     }}
                 >
@@ -42,7 +44,7 @@ export function ModelSelectWithCustom({ models, selectedModel, onSelect }: Model
                 data-text="手动输入"
                 onClick={() => {
                     setShowCustom(true);
-                    // If selectedModel is already custom, pre-fill
+                    // If selectedModel is already custom (not in presets), pre-fill
                     if (selectedModel && !presetIds.includes(selectedModel)) {
                         setCustomValue(selectedModel);
                     }
@@ -63,16 +65,6 @@ export function ModelSelectWithCustom({ models, selectedModel, onSelect }: Model
                             setCustomValue(e.target.value);
                             const v = e.target.value.trim();
                             if (v) onSelect(v);
-                        }}
-                        onBlur={() => {
-                            const v = customValue.trim();
-                            if (v) {
-                                onSelect(v);
-                            } else if (!v && showCustom) {
-                                // If empty and user had toggled custom, revert to first preset
-                                setShowCustom(false);
-                                if (models.length > 0) onSelect(models[0].id);
-                            }
                         }}
                     />
                 </div>

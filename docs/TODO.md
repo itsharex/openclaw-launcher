@@ -121,8 +121,11 @@
 ## 🎨 Phase 5.4: 安装界面 Premium 优化 ✅
 - [x] Stage 18: 启动界面极光浮动重构 ✅ `v2-stage18-complete`
 
-## 🚀 Phase 5.5: 仪表盘体验优化 + 端口扩展
-- [ ] Stage 19: 全局启动加载框 + Logo 替换 + 脉冲光效 + 端口范围扩展 🚧
+## 🚀 Phase 5.5: 仪表盘体验优化 + 端口扩展 ✅
+- [x] Stage 19: 全局启动加载框 + Logo 替换 + 脉冲光效 + 端口范围扩展 ✅ `v2-stage19-complete`
+
+## ⚙️ Phase 5.6: 自定义模型 ID 输入
+- [ ] Stage 20: ApiKeyModal + ModelSwitchModal 支持手动输入模型 ID 🚧
 
 ---
 

@@ -34,7 +34,6 @@ interface ApiKeyModalProps {
     selectedModel: string;
     setSelectedModel: (m: string) => void;
     configSaving: boolean;
-    configStatus: string;
     setConfigStatus: (s: string) => void;
     // Actions
     onSaveConfig: () => void;
@@ -59,7 +58,6 @@ export function ApiKeyModal({
     selectedModel,
     setSelectedModel,
     configSaving,
-    configStatus,
     setConfigStatus,
     onSaveConfig,
     onOpenRegister,

@@ -1,17 +1,15 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
-import { Activity, Cpu, SlidersHorizontal, Network } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Activity, SlidersHorizontal, Network } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import "./App.css";
 import qrWechat from "./assets/qr-wechat.jpg";
 import qrAlipay from "./assets/qr-alipay.jpg";
 
 // ===== Extracted modules =====
 import type { TabId } from "./types";
-import { CATEGORY_LABELS } from "./types";
-import { formatUptime } from "./utils/log-humanizer";
-import { Modal, ModalFooter } from "./components/ui/Modal";
+import { Modal } from "./components/ui/Modal";
 import { Header } from "./components/Header";
 import { ApiKeyModal } from "./components/ApiKeyModal";
 import { SetupWizard } from "./components/SetupWizard";
@@ -48,7 +46,7 @@ function App() {
     selectedProvider, setSelectedProvider,
     apiKeyInput, setApiKeyInput, baseUrlInput, setBaseUrlInput,
     selectedModel, setSelectedModel,
-    configSaving, configStatus, setConfigStatus,
+    configSaving, setConfigStatus,
     currentConfig, filteredProviders,
     showKeyModal, setShowKeyModal, showResetModal, setShowResetModal,
     showReinstallModal, setShowReinstallModal,
@@ -172,7 +170,6 @@ function App() {
               selectedModel={selectedModel}
               setSelectedModel={setSelectedModel}
               configSaving={configSaving}
-              configStatus={configStatus}
               setConfigStatus={setConfigStatus}
               setShowKeyModal={setShowKeyModal}
               handleSaveConfig={handleSaveConfig}
@@ -352,7 +349,6 @@ function App() {
         selectedModel={selectedModel}
         setSelectedModel={setSelectedModel}
         configSaving={configSaving}
-        configStatus={configStatus}
         setConfigStatus={setConfigStatus}
         onSaveConfig={handleSaveConfig}
         onOpenRegister={handleOpenRegister}

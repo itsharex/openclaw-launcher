@@ -11,7 +11,7 @@
 
 [下载安装包](https://github.com/ZsTs119/openclaw-launcher/releases) · [功能特性](#-功能特性) · [快速开始](#-快速开始) · [开发指南](#-开发指南) · [参与贡献](#-参与贡献)
 
----
+**中文** | [English](README_EN.md)
 
 *OpenClaw Launcher 让你无需任何编程经验，也能在自己的电脑上运行 [OpenClaw](https://github.com/openclaw/openclaw) AI 编程助手。*
 

@@ -19,7 +19,6 @@ interface ModelsTabProps {
     selectedModel: string;
     setSelectedModel: (v: string) => void;
     configSaving: boolean;
-    configStatus: string;
     setConfigStatus: (v: string) => void;
     setShowKeyModal: (v: boolean) => void;
     handleSaveConfig: () => void;
@@ -32,7 +31,7 @@ export function ModelsTab({
     setSelectedModel, setConfigStatus,
     setShowKeyModal,
     apiKeyInput, setApiKeyInput, baseUrlInput,
-    selectedModel, configSaving, configStatus,
+    selectedModel, configSaving,
     handleSaveConfig,
 }: ModelsTabProps) {
     return (
@@ -85,7 +84,7 @@ export function ModelsTab({
                     <button className="btn-primary" style={{ width: '100%', marginTop: 16, padding: '12px' }} onClick={handleSaveConfig} disabled={configSaving}>
                         {configSaving ? "保存中..." : <><Save size={14} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 4 }} />保存配置</>}
                     </button>
-                    {configStatus && <div className="config-status" style={{ marginTop: 12 }}>{configStatus}</div>}
+
                 </div>
             ) : (
                 <div className="provider-list animate-fade-in">

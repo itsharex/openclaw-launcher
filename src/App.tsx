@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { save } from "@tauri-apps/plugin-dialog";
+import { save, message } from "@tauri-apps/plugin-dialog";
 import { Activity, Cpu, SlidersHorizontal, Network } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
@@ -197,9 +197,9 @@ function App() {
                 const logLines = logs.map(l => `[${l.time}] [${l.level}] ${l.humanized || l.message}`);
                 try {
                   await invoke('export_diagnostics_zip', { savePath, logs: logLines });
-                  setInfoModalTitle('诊断信息已导出');
+                  await message('诊断信息已导出到：\n' + savePath, { title: '导出成功', kind: 'info' });
                 } catch (e: unknown) {
-                  setInfoModalTitle(`导出失败: ${e}`);
+                  await message(`导出失败: ${e}`, { title: '导出错误', kind: 'error' });
                 }
               }}
             />

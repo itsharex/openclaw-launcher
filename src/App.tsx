@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { save, message } from "@tauri-apps/plugin-dialog";
+import { save } from "@tauri-apps/plugin-dialog";
 import { Activity, Cpu, SlidersHorizontal, Network } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
@@ -32,6 +32,7 @@ function App() {
   const [activeSettingsTab, setActiveSettingsTab] = useState<"general" | "logs" | "about">("general");
   const [running, setRunning] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [feedbackModal, setFeedbackModal] = useState<{ title: string; msg: string; url?: string } | null>(null);
   const APP_VERSION = "0.3.1";
 
   // === Hooks ===
@@ -201,9 +202,9 @@ function App() {
                 const logLines = logs.map(l => `[${l.time}] [${l.level}] ${l.humanized || l.message}`);
                 try {
                   await invoke('export_diagnostics_zip', { savePath, logs: logLines });
-                  await message('诊断信息已导出到：\n' + savePath, { title: '导出成功', kind: 'info' });
+                  setFeedbackModal({ title: '导出成功', msg: '诊断信息已导出到：\n' + savePath });
                 } catch (e: unknown) {
-                  await message(`导出失败: ${e}`, { title: '导出错误', kind: 'error' });
+                  setFeedbackModal({ title: '导出错误', msg: `导出失败: ${e}` });
                 }
               }}
               checkingUpdate={checkingUpdate}
@@ -211,16 +212,22 @@ function App() {
                 setCheckingUpdate(true);
                 try {
                   const res = await fetch('https://api.github.com/repos/ZsTs119/openclaw-launcher/releases/latest');
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
                   const data = await res.json();
-                  const latestTag = data.tag_name?.replace(/^v/, '') || '';
-                  if (latestTag && latestTag !== APP_VERSION) {
-                    await message(`发现新版本 v${latestTag}！\n当前版本 v${APP_VERSION}\n\n点击确定前往下载页面`, { title: '发现更新', kind: 'info' });
-                    await invoke('open_url', { url: data.html_url || 'https://github.com/ZsTs119/openclaw-launcher/releases' });
+                  const rawTag = data.tag_name || '';
+                  const isSemver = /^v?\d+\.\d+\.\d+$/.test(rawTag);
+                  const latestVersion = rawTag.replace(/^v/, '');
+                  if (isSemver && latestVersion !== APP_VERSION) {
+                    setFeedbackModal({
+                      title: '发现更新',
+                      msg: `发现新版本 v${latestVersion}！\n当前版本 v${APP_VERSION}`,
+                      url: data.html_url || 'https://github.com/ZsTs119/openclaw-launcher/releases',
+                    });
                   } else {
-                    await message(`当前版本 v${APP_VERSION} 已是最新版本 ✅`, { title: '无可用更新' });
+                    setFeedbackModal({ title: '无可用更新', msg: `当前版本 v${APP_VERSION} 已是最新版本 ✅` });
                   }
                 } catch {
-                  await message('检查更新失败，请检查网络连接', { title: '网络错误', kind: 'error' });
+                  setFeedbackModal({ title: '网络错误', msg: '检查更新失败，请检查网络连接' });
                 } finally {
                   setCheckingUpdate(false);
                 }
@@ -235,17 +242,30 @@ function App() {
         <div className="modal-desc" style={{ marginTop: 16, marginBottom: 24, padding: 24, background: 'var(--bg-card)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
           {infoModalTitle.includes('赞赏') ? (
             <>
-              <img src={qrAlipay} alt="支付宝收钱码" style={{ width: '100%', maxWidth: 220, borderRadius: 8 }} />
+              <img src={qrAlipay} alt="支付宝收钱码" style={{ width: '100%', maxWidth: 220, maxHeight: 280, objectFit: 'contain', borderRadius: 8 }} />
               <div style={{ fontSize: 13, marginTop: 12, color: 'var(--text-secondary)' }}>如果 OpenClaw 对你有帮助，可以请作者喝杯咖啡 ☕</div>
             </>
           ) : (
             <>
-              <img src={qrWechat} alt="微信公众号" style={{ width: '100%', maxWidth: 220, borderRadius: 8 }} />
+              <img src={qrWechat} alt="微信公众号" style={{ width: '100%', maxWidth: 220, maxHeight: 280, objectFit: 'contain', borderRadius: 8 }} />
               <div style={{ fontSize: 13, marginTop: 12, color: 'var(--text-secondary)' }}>扫码关注微信公众号，获取最新动态</div>
             </>
           )}
         </div>
         <button className="btn-secondary" style={{ width: '100%' }} onClick={() => setInfoModalTitle("")}>关闭</button>
+      </Modal>
+
+      {/* Feedback Modal (version check / diagnostics export) */}
+      <Modal show={!!feedbackModal} onClose={() => setFeedbackModal(null)} title={feedbackModal?.title || ''} maxWidth={360}>
+        <div className="modal-desc" style={{ marginTop: 16, marginBottom: 24, padding: 24, background: 'var(--bg-card)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+          <div style={{ fontSize: 14, whiteSpace: 'pre-line', color: 'var(--text-primary)' }}>{feedbackModal?.msg}</div>
+        </div>
+        {feedbackModal?.url ? (
+          <button className="btn-primary btn-hero" style={{ width: '100%' }}
+            onClick={() => { invoke('open_url', { url: feedbackModal.url }); setFeedbackModal(null); }}>前往下载页面</button>
+        ) : (
+          <button className="btn-secondary" style={{ width: '100%' }} onClick={() => setFeedbackModal(null)}>确定</button>
+        )}
       </Modal>
 
       {/* Model Switch Modal */}

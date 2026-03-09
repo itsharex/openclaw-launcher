@@ -14,8 +14,6 @@ interface SettingsTabProps {
     reinstalling: boolean;
     repairing: boolean;
     logs: LogEntry[];
-    showRawLogs: boolean;
-    setShowRawLogs: (v: boolean) => void;
     logRef: React.RefObject<HTMLDivElement | null>;
     handleSwitchWorkspace: () => void;
     handleReinstall: () => void;
@@ -23,15 +21,17 @@ interface SettingsTabProps {
     handleReset: () => void;
     setShowKeyModal: (v: boolean) => void;
     setInfoModalTitle: (v: string) => void;
+    onExportDiagnostics: () => void;
 }
 
 export function SettingsTab({
     activeSettingsTab, setActiveSettingsTab,
     workspacePath, servicePort, currentConfig,
     reinstalling, repairing,
-    logs, showRawLogs, setShowRawLogs, logRef,
+    logs, logRef,
     handleSwitchWorkspace, handleReinstall, handleRepairConnection, handleReset,
     setShowKeyModal, setInfoModalTitle,
+    onExportDiagnostics,
 }: SettingsTabProps) {
     return (
         <motion.div
@@ -129,25 +129,17 @@ export function SettingsTab({
                         <div className="settings-group animate-fade-in">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                                 <h3 className="settings-section-title" style={{ margin: 0 }}><FileText size={16} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 6 }} />日志诊断</h3>
-                                <button className="btn-primary" style={{ padding: '6px 16px', fontSize: 13 }}>
+                                <button className="btn-primary" style={{ padding: '6px 16px', fontSize: 13 }} onClick={onExportDiagnostics}>
                                     <Download size={14} strokeWidth={1.5} style={{ verticalAlign: 'middle', marginRight: 4 }} />导出诊断 ZIP
                                 </button>
                             </div>
                             <div className="log-panel" style={{ height: 380, borderRadius: 'var(--radius)' }}>
-                                <div className="log-header" style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.3)' }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 12 }}>
-                                        <label className="log-toggle" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                                            <input type="checkbox" checked={showRawLogs} onChange={(e) => setShowRawLogs(e.target.checked)} />
-                                            <span>显示原始日志流</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div className="log-content full-height" ref={logRef} style={{ padding: 12, fontSize: 12 }}>
+                                <div className="log-content full-height" ref={logRef} style={{ padding: 12, fontSize: 12, overflowY: 'auto', height: '100%' }}>
                                     {logs.length === 0 ? (
                                         <div className="log-empty">暂无活动日志</div>
                                     ) : (
-                                        logs.slice(-20).map((log, i) => {
-                                            const displayMsg = !showRawLogs && log.humanized ? log.humanized : log.message;
+                                        logs.map((log, i) => {
+                                            const displayMsg = log.humanized || log.message;
                                             return (
                                                 <div className="log-line" key={i}>
                                                     <span className="log-time" style={{ opacity: 0.5 }}>{log.time}</span>

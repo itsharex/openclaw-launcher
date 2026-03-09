@@ -1,4 +1,5 @@
 mod config;
+mod diagnostics;
 mod download;
 mod environment;
 mod installer;
@@ -46,6 +47,8 @@ pub fn run() {
             config::save_api_config,
             config::set_default_model,
             config::reset_config,
+            // Diagnostics
+            diagnostics::export_diagnostics_zip,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

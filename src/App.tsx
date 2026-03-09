@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
 import { Activity, Cpu, SlidersHorizontal, Network } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import "./App.css";
@@ -31,7 +32,7 @@ function App() {
 
   // === Hooks ===
   const {
-    logs, showRawLogs, setShowRawLogs,
+    logs,
     repairToast, setRepairToast,
     logRef, addLog,
   } = useLogs();
@@ -179,8 +180,7 @@ function App() {
               reinstalling={reinstalling}
               repairing={repairing}
               logs={logs}
-              showRawLogs={showRawLogs}
-              setShowRawLogs={setShowRawLogs}
+
               logRef={logRef}
               handleSwitchWorkspace={handleSwitchWorkspace}
               handleReinstall={handleReinstall}
@@ -188,6 +188,20 @@ function App() {
               handleReset={handleReset}
               setShowKeyModal={setShowKeyModal}
               setInfoModalTitle={setInfoModalTitle}
+              onExportDiagnostics={async () => {
+                const savePath = await save({
+                  defaultPath: `openclaw-diagnostics-${Date.now()}.zip`,
+                  filters: [{ name: 'ZIP', extensions: ['zip'] }],
+                });
+                if (!savePath) return;
+                const logLines = logs.map(l => `[${l.time}] [${l.level}] ${l.humanized || l.message}`);
+                try {
+                  await invoke('export_diagnostics_zip', { savePath, logs: logLines });
+                  setInfoModalTitle('诊断信息已导出');
+                } catch (e: unknown) {
+                  setInfoModalTitle(`导出失败: ${e}`);
+                }
+              }}
             />
           )}
         </AnimatePresence>

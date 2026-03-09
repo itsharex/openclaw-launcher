@@ -12,7 +12,6 @@ import { stripAnsi } from "../utils/ansi-strip";
 
 export function useLogs() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
-    const [showRawLogs, setShowRawLogs] = useState(false);
     const [repairToast, setRepairToast] = useState(false);
     const logRef = useRef<HTMLDivElement>(null);
 
@@ -36,8 +35,6 @@ export function useLogs() {
 
     return {
         logs,
-        showRawLogs,
-        setShowRawLogs,
         repairToast,
         setRepairToast,
         logRef,

@@ -112,6 +112,9 @@
 ## 🔧 Phase 5.1: UX 细节打磨 ✅
 - [x] Stage 15: Tab 切换抖动修复 + 表单宽度优化 + 弹窗跳动修复 + 残余绿色清理 ✅ `v2-stage15-complete`
 
+## 📋 Phase 5.2: 日志诊断面板优化
+- [ ] Stage 16: 日志面板简化（去 toggle + 全量滚动）+ 导出诊断 ZIP 🚧
+
 ## 🏢 Phase 6: 企业级分发
 - [ ] Sentry 错误上报 (opt-in)
 - [ ] Windows 代码签名 (EV 证书)

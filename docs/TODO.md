@@ -118,6 +118,27 @@
 ## 🔍 Phase 5.3: 关于页面优化
 - [ ] Stage 17: 版本检查（GitHub API + 旋转动画）+ 二维码替换 🚧
 
+---
+
+## ⚠️ 发版规范 Checklist（正式发布前必读）
+
+> **版本号规范**：Semantic Versioning (`MAJOR.MINOR.PATCH`)
+> - 当前：`0.3.1` → 下个功能版本 `0.4.0`，修 bug `0.3.2`，正式版 `1.0.0`
+
+| 步骤 | 说明 |
+|---|---|
+| 1. 更新 `package.json` version | 唯一真相源，代码和检查更新都从这里读 |
+| 2. 更新 `Cargo.toml` version | Tauri 也需要同步 |
+| 3. 更新 SettingsTab 显示版本 | `当前版本 vX.X.X` 硬编码处 |
+| 4. Git tag 用 semver | `git tag v0.4.0`（非 `v2-stageXX-complete`） |
+| 5. 在 GitHub 创建 Release | 不只是 tag！Release 才会被 `/releases/latest` API 识别 |
+| 6. Release 附带安装包 | `.msi` / `.dmg` / `.AppImage` 等 |
+
+> **注意**：开发阶段的 `v2-stageXX-complete` tag 仅供内部追踪，不影响版本检查。
+> 客户端检查更新时只认 semver 格式的 `tag_name`（`/^v?\d+\.\d+\.\d+$/`）。
+
+---
+
 ## 🏢 Phase 6: 企业级分发
 - [ ] Sentry 错误上报 (opt-in)
 - [ ] Windows 代码签名 (EV 证书)

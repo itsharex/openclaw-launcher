@@ -30,11 +30,11 @@ export function useSetup({ addLog, checkApiKey, setRunning }: UseSetupOptions) {
         try {
             await invoke("setup_openclaw");
             setPhase("ready");
-            addLog("success", "🎉 OpenClaw 初始化完成！");
+            addLog("success", "OpenClaw 初始化完成！");
             await checkApiKey();
         } catch (err) {
             addLog("error", `初始化失败: ${err}`);
-            setProgressMsg(`❌ 初始化失败: ${err}`);
+            setProgressMsg(`[!] 初始化失败: ${err}`);
         } finally {
             setLoading(false);
         }
@@ -55,7 +55,7 @@ export function useSetup({ addLog, checkApiKey, setRunning }: UseSetupOptions) {
                 } else {
                     setPhase("ready");
                     setRunning(serviceRunning);
-                    addLog("success", "✅ 环境检查通过，所有组件就绪");
+                    addLog("success", "[OK] 环境检查通过，所有组件就绪");
                     await checkApiKey();
                 }
             } else {
@@ -105,7 +105,7 @@ export function useSetup({ addLog, checkApiKey, setRunning }: UseSetupOptions) {
         try {
             await invoke("inject_default_config");
             await invoke("inject_default_models");
-            addLog("success", `✅ 工作区已配置: ${workspacePath || "默认目录"}`);
+            addLog("success", `[OK] 工作区已配置: ${workspacePath || "默认目录"}`);
             setPhase("ready");
             await checkApiKey();
         } catch (err) {
@@ -122,7 +122,7 @@ export function useSetup({ addLog, checkApiKey, setRunning }: UseSetupOptions) {
             setLoading(true);
             try {
                 await invoke("inject_default_config");
-                addLog("success", `✅ 工作区已切换到: ${selected}`);
+                addLog("success", `[OK] 工作区已切换到: ${selected}`);
             } catch (err) {
                 addLog("error", `切换失败: ${err}`);
             } finally {

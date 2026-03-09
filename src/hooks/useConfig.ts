@@ -54,7 +54,7 @@ export function useConfig({ addLog, running, setRunning }: UseConfigOptions) {
     }, []);
 
     const handleSaveConfig = useCallback(async () => {
-        if (!apiKeyInput.trim()) { setConfigStatus("❌ 请输入 API Key"); return; }
+        if (!apiKeyInput.trim()) { setConfigStatus("[!] 请输入 API Key"); return; }
         setConfigSaving(true);
         setConfigStatus("");
         try {
@@ -71,20 +71,20 @@ export function useConfig({ addLog, running, setRunning }: UseConfigOptions) {
 
             // Auto-restart service if running, so new config takes effect
             if (running) {
-                addLog("info", "🔄 正在重启服务以加载新配置...");
+                addLog("info", "正在重启服务以加载新配置...");
                 try {
                     await invoke("stop_service");
                     setRunning(false);
                     await new Promise(r => setTimeout(r, 1000));
                     await invoke("start_service");
                     setRunning(true);
-                    addLog("success", "✅ 服务已重启，新配置生效");
+                    addLog("success", "[OK] 服务已重启，新配置生效");
                 } catch (err) {
                     addLog("error", `重启服务失败: ${err}`);
                 }
             }
         } catch (err) {
-            setConfigStatus(`❌ 保存失败: ${err}`);
+            setConfigStatus(`[!] 保存失败: ${err}`);
         } finally {
             setConfigSaving(false);
         }
@@ -98,7 +98,7 @@ export function useConfig({ addLog, running, setRunning }: UseConfigOptions) {
             addLog("success", result);
             setCurrentConfig(prev => prev ? { ...prev, model: modelId } : prev);
         } catch (err) {
-            setConfigStatus(`❌ 切换失败: ${err}`);
+            setConfigStatus(`[!] 切换失败: ${err}`);
         }
     }, [addLog]);
 

@@ -56,7 +56,7 @@ export function useService({
                 const alive = await invoke<boolean>("is_service_running");
                 if (!alive) {
                     setRunning(false);
-                    addLog("error", "⚠️ OpenClaw 服务进程已意外退出");
+                    addLog("error", "OpenClaw 服务进程已意外退出");
                 }
             } catch { /* ignore */ }
         });
@@ -106,11 +106,11 @@ export function useService({
         try {
             await invoke("reinstall_environment");
             setPhase("ready");
-            addLog("success", "🎉 环境重新安装完成！");
+            addLog("success", "环境重新安装完成！");
             await checkApiKey();
         } catch (err) {
             addLog("error", `重新安装失败: ${err}`);
-            setProgressMsg(`❌ 重新安装失败: ${err}`);
+            setProgressMsg(`[!] 重新安装失败: ${err}`);
         } finally {
             setReinstalling(false);
         }
@@ -130,7 +130,7 @@ export function useService({
             addLog("info", "正在重新启动服务...");
             await invoke("start_service");
             setRunning(true);
-            addLog("success", "✅ 连接修复完成，服务已重启");
+            addLog("success", "[OK] 连接修复完成，服务已重启");
         } catch (err) {
             addLog("error", `修复失败: ${err}`);
         } finally {

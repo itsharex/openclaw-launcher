@@ -6,17 +6,17 @@
  */
 
 const LOG_TRANSLATIONS: [RegExp, string][] = [
-    [/npm warn/i, "⚠️ 依赖警告（可忽略）"],
-    [/npm error/i, "❌ 依赖安装出错"],
-    [/added \d+ packages/i, "✅ 依赖包安装完成"],
-    [/listening on.*:?(\d+)/i, "✅ 服务已就绪，端口已打开"],
-    [/server (is )?running/i, "✅ 服务正在运行"],
-    [/EADDRINUSE/i, "❌ 端口被占用，请关闭占用程序后重试"],
-    [/ECONNREFUSED/i, "❌ 连接被拒绝，检查网络设置"],
-    [/ENOTFOUND/i, "❌ 域名解析失败，检查网络连接"],
-    [/compiling/i, "⚙️ 正在编译..."],
-    [/deprecated/i, "ℹ️ 有过时的依赖（不影响使用）"],
-    [/ready in/i, "✅ 启动完成！"],
+    [/npm warn/i, "[WARN] 依赖警告（可忽略）"],
+    [/npm error/i, "[!] 依赖安装出错"],
+    [/added \d+ packages/i, "[OK] 依赖包安装完成"],
+    [/listening on.*:?(\d+)/i, "[OK] 服务已就绪，端口已打开"],
+    [/server (is )?running/i, "[OK] 服务正在运行"],
+    [/EADDRINUSE/i, "[!] 端口被占用，请关闭占用程序后重试"],
+    [/ECONNREFUSED/i, "[!] 连接被拒绝，检查网络设置"],
+    [/ENOTFOUND/i, "[!] 域名解析失败，检查网络连接"],
+    [/compiling/i, "正在编译..."],
+    [/deprecated/i, "有过时的依赖（不影响使用）"],
+    [/ready in/i, "[OK] 启动完成！"],
 ];
 
 /**

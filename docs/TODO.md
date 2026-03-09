@@ -109,8 +109,8 @@
 - [x] Stage 13: Emoji → Lucide 图标统一 ✅ `v2-stage13-complete`
 - [x] Stage 14: 内联色值清理 ✅ `v2-stage14-complete`
 
-## 🔧 Phase 5.1: UX 细节打磨
-- [ ] Stage 15: Tab 切换抖动修复 + 表单宽度优化 + 弹窗跳动修复 + 残余绿色清理 🚧
+## 🔧 Phase 5.1: UX 细节打磨 ✅
+- [x] Stage 15: Tab 切换抖动修复 + 表单宽度优化 + 弹窗跳动修复 + 残余绿色清理 ✅ `v2-stage15-complete`
 
 ## 🏢 Phase 6: 企业级分发
 - [ ] Sentry 错误上报 (opt-in)

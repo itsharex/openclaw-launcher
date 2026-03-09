@@ -118,8 +118,11 @@
 ## 🔍 Phase 5.3: 关于页面优化 ✅
 - [x] Stage 17: 版本检查（GitHub API + 旋转动画）+ 二维码替换 ✅ `v2-stage17-complete`
 
-## 🎨 Phase 5.4: 安装界面 Premium 优化
-- [ ] Stage 18: 启动界面极光浮动重构（居中 + 渐变标题 + 进度条发光 + 极光背景 + 错误弹窗）🚧
+## 🎨 Phase 5.4: 安装界面 Premium 优化 ✅
+- [x] Stage 18: 启动界面极光浮动重构 ✅ `v2-stage18-complete`
+
+## 🚀 Phase 5.5: 仪表盘体验优化 + 端口扩展
+- [ ] Stage 19: 全局启动加载框 + Logo 替换 + 脉冲光效 + 端口范围扩展 🚧
 
 ---
 

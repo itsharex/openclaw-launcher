@@ -135,12 +135,25 @@ Launcher 下载的 OpenClaw 源码**不跟踪 main 分支**，而是锁定到指
 
 ## 🚀 发版流程 (Release)
 
+### 版本号同步清单
+
+升版本时，以下 **5 个位置**必须保持一致：
+
+| 文件 | 字段 |
+|---|---|
+| `package.json` | `"version"` |
+| `src-tauri/tauri.conf.json` | `"version"` |
+| `src-tauri/Cargo.toml` | `version` |
+| `src/App.tsx` | `APP_VERSION` |
+| `src/components/SettingsTab.tsx` | 设置中心"关于"版本号 |
+
+### 标准发版步骤
+
 ```bash
 # 1. 确保 v2-dev 上所有改动已 commit
 git status  # 应为 clean
 
-# 2. 升版本号（4 个文件保持一致）
-#    package.json / src-tauri/tauri.conf.json / src-tauri/Cargo.toml / src/App.tsx
+# 2. 升版本号（上面 5 个文件全部更新）
 
 # 3. 提交版本号
 git add -A && git commit -m "chore: bump version to vX.Y.Z"
@@ -154,9 +167,29 @@ git checkout main && git merge v2-dev && git push origin main
 # 6. 打 tag（触发 CI 自动构建 + Release）
 git tag vX.Y.Z && git push origin vX.Y.Z
 
-# 7. 切回开发分支
+# 7. 补充 Release Notes（CI 会自动创建 Draft Release，需手动编辑或用 API 补充）
+# 模板参考下方
+
+# 8. 切回开发分支
 git checkout v2-dev
 ```
 
+### Release Notes 模板
+
+```markdown
+## ✨ 新功能
+- 功能描述
+
+## 🐛 Bug Fixes
+- 修复描述
+
+## 📄 其他
+- 文档/配置/依赖变更
+
+---
+**完整变更日志**: https://github.com/ZsTs119/openclaw-launcher/compare/vPREV...vCURR
+```
+
 > **CI 自动构建**：推送 tag 后，GitHub Actions 自动构建 Windows/macOS/Linux 安装包并发布到 Releases。
+> **Release Notes**：CI 创建的 Release 可能没有详细说明，**必须**手动补充或用 GitHub API 更新 body。
 

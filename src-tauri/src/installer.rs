@@ -185,41 +185,86 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
+        let combined = format!("{}\n{}", stdout, stderr);
 
-        // ===== Auto-retry: clean node_modules and try once more =====
-        let _ = app.emit("setup-progress", serde_json::json!({
-            "stage": "npm_install",
-            "message": "⚠️ 安装遇到问题，正在清理环境并重试...",
-            "percent": 93
-        }));
+        // Detect node-llama-cpp postinstall crash (common on old Windows CPUs without AVX2)
+        // Exit code 3221225477 = 0xC0000005 = ACCESS_VIOLATION
+        let is_llama_crash = combined.contains("node-llama-cpp")
+            && (combined.contains("ELIFECYCLE") || combined.contains("3221225477"));
 
-        let node_modules_retry = openclaw_dir.join("node_modules");
-        let _ = std::fs::remove_dir_all(&node_modules_retry);
+        if is_llama_crash {
+            // ===== Smart retry: skip node-llama-cpp binary download =====
+            let _ = app.emit("setup-progress", serde_json::json!({
+                "stage": "npm_install",
+                "message": "检测到本地推理组件不兼容，正在兼容性适配...",
+                "percent": 93
+            }));
 
-        let mut retry_cmd = std::process::Command::new(&node_bin);
-        retry_cmd.arg(&pnpm_cli)
-            .arg("install")
-            .current_dir(&openclaw_dir)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .env("PATH", &sandbox_path);
+            let node_modules_retry = openclaw_dir.join("node_modules");
+            let _ = std::fs::remove_dir_all(&node_modules_retry);
 
-        #[cfg(target_os = "windows")]
-        retry_cmd.creation_flags(0x08000000);
+            let mut retry_cmd = std::process::Command::new(&node_bin);
+            retry_cmd.arg(&pnpm_cli)
+                .arg("install")
+                .current_dir(&openclaw_dir)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .env("PATH", &sandbox_path)
+                .env("NODE_LLAMA_CPP_SKIP_DOWNLOAD", "true");
 
-        if use_mirror {
-            retry_cmd.env("npm_config_registry", "https://registry.npmmirror.com");
-        }
+            #[cfg(target_os = "windows")]
+            retry_cmd.creation_flags(0x08000000);
 
-        let retry_output = retry_cmd.output()
-            .map_err(|e| format!("重试 pnpm install 失败: {}", e))?;
+            if use_mirror {
+                retry_cmd.env("npm_config_registry", "https://registry.npmmirror.com");
+            }
 
-        if !retry_output.status.success() {
-            let retry_stderr = String::from_utf8_lossy(&retry_output.stderr);
-            return Err(format!(
-                "pnpm install 失败 (已重试一次):\nstdout: {}\nstderr: {}\n\n重试 stderr: {}",
-                stdout, stderr, retry_stderr
-            ));
+            let retry_output = retry_cmd.output()
+                .map_err(|e| format!("重试 pnpm install 失败: {}", e))?;
+
+            if !retry_output.status.success() {
+                let retry_stderr = String::from_utf8_lossy(&retry_output.stderr);
+                return Err(format!(
+                    "pnpm install 失败 (已跳过本地推理组件重试):\nstdout: {}\nstderr: {}\n\n重试 stderr: {}",
+                    stdout, stderr, retry_stderr
+                ));
+            }
+        } else {
+            // ===== Generic retry: clean node_modules and try once more =====
+            let _ = app.emit("setup-progress", serde_json::json!({
+                "stage": "npm_install",
+                "message": "安装遇到问题，正在清理环境并重试...",
+                "percent": 93
+            }));
+
+            let node_modules_retry = openclaw_dir.join("node_modules");
+            let _ = std::fs::remove_dir_all(&node_modules_retry);
+
+            let mut retry_cmd = std::process::Command::new(&node_bin);
+            retry_cmd.arg(&pnpm_cli)
+                .arg("install")
+                .current_dir(&openclaw_dir)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .env("PATH", &sandbox_path);
+
+            #[cfg(target_os = "windows")]
+            retry_cmd.creation_flags(0x08000000);
+
+            if use_mirror {
+                retry_cmd.env("npm_config_registry", "https://registry.npmmirror.com");
+            }
+
+            let retry_output = retry_cmd.output()
+                .map_err(|e| format!("重试 pnpm install 失败: {}", e))?;
+
+            if !retry_output.status.success() {
+                let retry_stderr = String::from_utf8_lossy(&retry_output.stderr);
+                return Err(format!(
+                    "pnpm install 失败 (已重试一次):\nstdout: {}\nstderr: {}\n\n重试 stderr: {}",
+                    stdout, stderr, retry_stderr
+                ));
+            }
         }
     }
 

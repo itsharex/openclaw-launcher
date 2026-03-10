@@ -54,30 +54,25 @@ pub fn check_disk_space(path: &PathBuf, required_mb: u64) -> Result<bool, String
     }
     #[cfg(not(target_os = "windows"))]
     {
-        // Use statvfs on Unix
-        use std::ffi::CString;
+        // Use `df` command instead of unsafe statvfs FFI
+        // (raw Statvfs struct has ABI mismatches across glibc versions, causing segfaults on some Ubuntu systems)
         let path_str = path.to_string_lossy().to_string();
-        let c_path = CString::new(path_str).map_err(|_| "Invalid path".to_string())?;
-        unsafe {
-            #[repr(C)]
-            struct Statvfs {
-                f_bsize: u64,
-                f_frsize: u64,
-                f_blocks: u64,
-                f_bfree: u64,
-                f_bavail: u64,
-                // ... other fields we don't need
-                _padding: [u64; 6],
+        match std::process::Command::new("df")
+            .args(["--output=avail", "-BM", &path_str])
+            .output()
+        {
+            Ok(output) if output.status.success() => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                // df output: "  Avail\n  12345M\n" — parse the number from the second line
+                if let Some(line) = stdout.lines().nth(1) {
+                    let cleaned = line.trim().trim_end_matches('M');
+                    if let Ok(avail_mb) = cleaned.parse::<u64>() {
+                        return Ok(avail_mb >= required_mb);
+                    }
+                }
+                Ok(true) // Can't parse, assume OK
             }
-            extern "C" {
-                fn statvfs(path: *const i8, buf: *mut Statvfs) -> i32;
-            }
-            let mut stat = std::mem::zeroed::<Statvfs>();
-            if statvfs(c_path.as_ptr(), &mut stat) != 0 {
-                return Ok(true); // Can't determine, assume OK
-            }
-            let free_mb = (stat.f_bavail * stat.f_frsize) / (1024 * 1024);
-            Ok(free_mb >= required_mb)
+            _ => Ok(true), // df failed or not available, assume OK
         }
     }
 }

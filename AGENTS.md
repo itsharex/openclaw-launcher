@@ -101,3 +101,62 @@ style(css): adjust dashboard card spacing
 
 > **铁律**：先文档，后代码。文档 commit 和代码 commit **必须分开**。
 > 每一步都留痕，确保跨 Context 的可追溯性。
+
+---
+
+## 📌 OpenClaw 版本锁定策略
+
+Launcher 下载的 OpenClaw 源码**不跟踪 main 分支**，而是锁定到指定 release tag。
+
+| 配置项 | 位置 | 当前值 |
+|---|---|---|
+| `PINNED_VERSION` | `src-tauri/src/download.rs` | `v2026.2.6-1` |
+
+### 为什么锁版本
+
+- OpenClaw v2026.2.19+ 引入了强制 device identity，导致 Launcher 的本地网关 WebSocket 连接被拒绝
+- `dangerouslyDisableDeviceAuth: true` 在新版中不再生效
+- 锁定到 v2026.2.6-1（device identity 强制化之前的最后一个稳定版）
+
+### 如何更新锁定版本
+
+1. 在 OpenClaw GitHub Releases 找到待更新的 tag
+2. **本地测试**：修改 `PINNED_VERSION`，删除沙盒 `openclaw-engine/`，全新安装测试
+3. 重点验证：浏览器能否正常连上网关 WebSocket
+4. 确认无误后提交
+
+### 版本检测机制
+
+- 安装后写入 `openclaw-engine/.openclaw_version` 标记文件
+- 每次启动检测：标记缺失或版本不匹配 → 自动删除旧版并重新下载
+- 用户无需任何手动操作
+
+---
+
+## 🚀 发版流程 (Release)
+
+```bash
+# 1. 确保 v2-dev 上所有改动已 commit
+git status  # 应为 clean
+
+# 2. 升版本号（4 个文件保持一致）
+#    package.json / src-tauri/tauri.conf.json / src-tauri/Cargo.toml / src/App.tsx
+
+# 3. 提交版本号
+git add -A && git commit -m "chore: bump version to vX.Y.Z"
+
+# 4. 推送 v2-dev
+git push origin v2-dev
+
+# 5. 合并到 main
+git checkout main && git merge v2-dev && git push origin main
+
+# 6. 打 tag（触发 CI 自动构建 + Release）
+git tag vX.Y.Z && git push origin vX.Y.Z
+
+# 7. 切回开发分支
+git checkout v2-dev
+```
+
+> **CI 自动构建**：推送 tag 后，GitHub Actions 自动构建 Windows/macOS/Linux 安装包并发布到 Releases。
+

@@ -137,6 +137,43 @@
 
 ---
 
+## 🔧 V3 路线图（`v3-dev` 分支）
+
+> **三端验收**：所有 V3 改动必须在 Windows / Linux / macOS 三端验证通过。
+> **UI 规范**：遵循现有深色主题配色 (`--bg-*`, `--accent-*`)、Lucide 图标体系、`framer-motion` 动画。
+
+### 🔔 Phase 7: System Tray + 启动更新检查 → `v0.5.0`
+- [ ] System Tray 托盘图标 + 右键菜单（打开面板/浏览器/重启/退出）
+- [ ] 关闭窗口 → 最小化到托盘，服务不中断
+- [ ] 托盘图标动态状态（运行中 / 已停止）
+- [ ] 启动自动检查更新（GitHub API → 弹窗 → "前往下载"）
+- [ ] 断网/无更新时静默忽略
+
+### 🤖 Phase 8: 智能体配置界面 → `v0.6.0`
+- [ ] Tab 扩展: 仪表盘 / AI 引擎 / **智能体** / **数据统计** / 设置
+- [ ] Agent 列表展示（卡片网格）
+- [ ] 创建 Agent（名称 + 模型 + 系统提示词 + 技能绑定）
+- [ ] 编辑 / 删除 Agent（`main` 不可删除）
+- [ ] 已安装技能列表展示
+- [ ] 数据统计 Tab 占位页面（Phase 10 实现）
+
+### 📱 Phase 9: 平台接入配置 → `v0.7.0`
+- [ ] config.rs 重构: 字符串拼接 → `serde_json::Value` 结构化读写
+- [ ] Telegram 配置引导（@BotFather → Token → 策略）
+- [ ] Discord 配置引导（Dev Portal → Token → 权限）
+- [ ] 飞书配置引导（开放平台 → App ID/Secret → 事件订阅）
+- [ ] 平台连接状态展示 + 编辑/删除
+
+### 🌐 Phase 10: i18n + Ollama + 数据统计 → `v0.8.0`
+- [ ] i18n 国际化: `react-i18next`（zh-CN + en）
+- [ ] 设置页语言切换
+- [ ] Ollama 检测 + 本地模型列表（整合到 AI 引擎页）
+- [ ] 数据统计 Tab: 请求量趋势折线图
+- [ ] 数据统计 Tab: Token 用量卡片（输入/输出/总计）
+- [ ] 数据统计 Tab: 模型分布饼图 + 费用估算
+
+---
+
 ## ⚠️ 发版规范 Checklist（正式发布前必读）
 
 > **版本号规范**：Semantic Versioning (`MAJOR.MINOR.PATCH`)

@@ -187,10 +187,16 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let combined = format!("{}\n{}", stdout, stderr);
 
-        // Detect node-llama-cpp postinstall crash (common on old Windows CPUs without AVX2)
-        // Exit code 3221225477 = 0xC0000005 = ACCESS_VIOLATION
+        // Detect node-llama-cpp postinstall failure (multiple possible causes):
+        // - ELIFECYCLE: generic postinstall script failure
+        // - 3221225477 (0xC0000005): ACCESS_VIOLATION (CPU without AVX2)
+        // - ERR_DLOPEN_FAILED: prebuilt .node binary can't load (missing VC++ runtime)
+        // - spawn git ENOENT: git not installed, can't clone source to build
         let is_llama_crash = combined.contains("node-llama-cpp")
-            && (combined.contains("ELIFECYCLE") || combined.contains("3221225477"));
+            && (combined.contains("ELIFECYCLE")
+                || combined.contains("3221225477")
+                || combined.contains("ERR_DLOPEN_FAILED")
+                || combined.contains("spawn git ENOENT"));
 
         if is_llama_crash {
             // ===== Smart retry: skip node-llama-cpp binary download =====
@@ -210,7 +216,8 @@ pub async fn run_npm_install(app: tauri::AppHandle) -> Result<String, String> {
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .env("PATH", &sandbox_path)
-                .env("NODE_LLAMA_CPP_SKIP_DOWNLOAD", "true");
+                .env("NODE_LLAMA_CPP_SKIP_DOWNLOAD", "true")
+                .env("NODE_LLAMA_CPP_SKIP_BUILD", "true");
 
             #[cfg(target_os = "windows")]
             retry_cmd.creation_flags(0x08000000);

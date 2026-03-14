@@ -2,6 +2,13 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.4] - 2026-03-14
+
+### 🐛 Bug 修复
+
+- **Windows node-llama-cpp 兼容性增强** — 扩展 postinstall 失败检测条件，新增 `ERR_DLOPEN_FAILED`（缺少 VC++ 运行时）和 `spawn git ENOENT`（未安装 Git）两种故障模式识别
+- **重试策略优化** — 智能重试时同时设置 `NODE_LLAMA_CPP_SKIP_BUILD=true`，彻底跳过源码编译，确保无 Git/CMake 环境也能正常安装
+
 ## [0.4.0] - 2026-03-09
 
 ### ✨ 新功能

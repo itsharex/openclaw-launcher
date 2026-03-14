@@ -131,6 +131,7 @@
 - [x] OpenClaw 版本锁定 (`download.rs` pin `v2026.2.6-1` + `.openclaw_version` 标记 + 自动版本检测) ✅ `v0.4.1`
 - [x] node-llama-cpp 智能重试 (`installer.rs` 检测 postinstall 崩溃 → `NODE_LLAMA_CPP_SKIP_DOWNLOAD=true` 重试) ✅ `v0.4.2`
 - [x] Ubuntu 闪退修复 (`environment.rs` 替换 unsafe `Statvfs` FFI 为 `df` 命令) ✅ `v0.4.3`
+- [x] Windows node-llama-cpp 兼容性增强 (`installer.rs` 扩展检测 + `SKIP_BUILD` 跳过源码编译) ✅ `v0.4.4`
 - [x] 发版流程规范化 (`AGENTS.md` 新增版本同步清单 + Release Notes 模板) ✅ `v0.4.1`
 - [x] GPL-3.0 许可证切换 + 43 文件版权头 + README_EN 同步 ✅ `v0.4.1`
 
@@ -139,7 +140,7 @@
 ## ⚠️ 发版规范 Checklist（正式发布前必读）
 
 > **版本号规范**：Semantic Versioning (`MAJOR.MINOR.PATCH`)
-> - 当前：`0.4.3` → 下个功能版本 `0.5.0`，修 bug `0.4.4`，正式版 `1.0.0`
+> - 当前：`0.4.4` → 下个功能版本 `0.5.0`，修 bug `0.4.5`，正式版 `1.0.0`
 
 | 步骤 | 说明 |
 |---|---|

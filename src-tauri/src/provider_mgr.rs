@@ -141,6 +141,31 @@ pub fn delete_provider(name: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Remove a single model from a provider's models array
+#[tauri::command]
+pub fn remove_model_from_provider(provider_name: String, model_id: String) -> Result<(), String> {
+    let mut config = read_config()?;
+
+    let models_arr = config
+        .get_mut("models")
+        .and_then(|m| m.get_mut("providers"))
+        .and_then(|p| p.get_mut(&provider_name))
+        .and_then(|prov| prov.get_mut("models"))
+        .and_then(|m| m.as_array_mut());
+
+    if let Some(arr) = models_arr {
+        let original_len = arr.len();
+        arr.retain(|m| m.get("id").and_then(|id| id.as_str()) != Some(&model_id));
+        if arr.len() == original_len {
+            return Err(format!("模型 '{}' 不存在于 '{}'", model_id, provider_name));
+        }
+        write_config(&config)?;
+        Ok(())
+    } else {
+        Err(format!("Provider '{}' 不存在或无模型列表", provider_name))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

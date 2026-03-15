@@ -394,3 +394,39 @@
   justify-content: flex-end;
   align-items: center;
 }
+
+/* Model chip wrapper with delete button */
+.model-chip-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.model-chip-delete {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.15s;
+  padding: 0;
+  z-index: 1;
+}
+
+.model-chip-wrapper:hover .model-chip-delete {
+  opacity: 1;
+}
+
+.model-chip-delete:hover {
+  background: var(--accent-danger, #ef4444);
+  border-color: var(--accent-danger, #ef4444);
+  color: white;
+}

@@ -16,9 +16,10 @@ interface UseConfigOptions {
     addLog: (level: string, message: string) => void;
     running: boolean;
     setRunning: (r: boolean) => void;
+    setStartingUp?: (v: boolean) => void;
 }
 
-export function useConfig({ addLog, running, setRunning }: UseConfigOptions) {
+export function useConfig({ addLog, running, setRunning, setStartingUp }: UseConfigOptions) {
     const [providers, setProviders] = useState<ProviderInfo[]>([]);
     const [selectedCategory, setSelectedCategory] = useState("free");
     const [selectedProvider, setSelectedProvider] = useState("");
@@ -117,6 +118,7 @@ export function useConfig({ addLog, running, setRunning }: UseConfigOptions) {
             setConfigVersion(v => v + 1);
             // Auto-restart service if running so new model takes effect
             if (running) {
+                setStartingUp?.(true);
                 addLog("info", "正在重启服务以加载新模型...");
                 try {
                     await invoke("stop_service");
@@ -124,9 +126,11 @@ export function useConfig({ addLog, running, setRunning }: UseConfigOptions) {
                     await new Promise(r => setTimeout(r, 1000));
                     await invoke("start_service");
                     setRunning(true);
+                    setStartingUp?.(false);
                     addLog("success", "[OK] 服务已重启，新模型配置生效");
                 } catch (restartErr) {
                     addLog("error", `重启服务失败: ${restartErr}`);
+                    setStartingUp?.(false);
                 }
             }
         } catch (err) {

@@ -37,6 +37,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [activeSettingsTab, setActiveSettingsTab] = useState<"general" | "logs" | "about">("general");
   const [running, setRunning] = useState(false);
+  const [modelSwitching, setModelSwitching] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [feedbackModal, setFeedbackModal] = useState<{ title: string; msg: string; url?: string } | null>(null);
   const [appVersion, setAppVersion] = useState("0.0.0");
@@ -68,7 +69,7 @@ function App() {
     checkApiKey, handleSaveConfig, handleSetModel, handleOpenRegister,
     handleReset, confirmReset, handleReinstall,
     configVersion, resetModalState,
-  } = useConfig({ addLog, running, setRunning });
+  } = useConfig({ addLog, running, setRunning, setStartingUp: setModelSwitching });
 
   const {
     phase, setPhase,
@@ -81,7 +82,7 @@ function App() {
   } = useSetup({ addLog, checkApiKey, setRunning });
 
   const {
-    loading: serviceLoading, startingUp,
+    loading: serviceLoading, startingUp, setStartingUp,
     uptime, servicePort,
     reinstalling, repairing,
     handleStart, handleStop,
@@ -94,6 +95,8 @@ function App() {
 
   // Combined loading state: either hook might be loading
   const loading = setupLoading || serviceLoading;
+  // Show startup overlay for both normal start and model-switch restart
+  const showStartupOverlay = startingUp || modelSwitching;
 
   // ===== Startup update check (runs once when phase becomes ready) =====
   useEffect(() => {
@@ -236,6 +239,7 @@ function App() {
               running={running}
               addLog={addLog}
               setRunning={setRunning}
+              setStartingUp={setStartingUp}
             />
           )}
 
@@ -391,7 +395,7 @@ function App() {
       </ConfirmModal>
 
       {/* Startup Overlay — shown while service is starting up */}
-      <StartupOverlay show={startingUp} />
+      <StartupOverlay show={showStartupOverlay} />
 
       {/* Connection Repair Toast */}
       <RepairToast

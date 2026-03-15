@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Cpu, Plus, Trash2, Server, Key, ChevronDown, ChevronUp, Edit3 } from "lucide-react";
+import { Cpu, Plus, Trash2, Server, Key, ChevronDown, ChevronUp, Edit3, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Modal } from "./ui/Modal";
 import type { SavedProvider, ProviderInfo, CurrentConfig } from "../types";
@@ -39,6 +39,7 @@ interface ModelsTabProps {
     running?: boolean;
     addLog?: (level: string, msg: string) => void;
     setRunning?: (r: boolean) => void;
+    setStartingUp?: (v: boolean) => void;
 }
 
 export function ModelsTab({
@@ -50,6 +51,7 @@ export function ModelsTab({
     running,
     addLog,
     setRunning,
+    setStartingUp,
 }: ModelsTabProps) {
     const [savedProviders, setSavedProviders] = useState<SavedProvider[]>([]);
     const [loading, setLoading] = useState(true);
@@ -74,7 +76,13 @@ export function ModelsTab({
         }
     }, []);
 
-    useEffect(() => { loadProviders(); }, [loadProviders, configVersion]);
+    useEffect(() => {
+        loadProviders();
+        // Auto-expand the current provider card after save/switch
+        if (currentConfig?.provider) {
+            setExpandedProvider(currentConfig.provider);
+        }
+    }, [loadProviders, configVersion]);
 
     // Also reload when currentConfig changes (e.g. from dashboard switch)
     useEffect(() => { loadProviders(); }, [currentConfig?.model]);
@@ -118,6 +126,7 @@ export function ModelsTab({
             onConfigChanged?.();
             // Auto-restart service if running so new model takes effect
             if (running && setRunning) {
+                setStartingUp?.(true);
                 addLog?.("info", "正在重启服务以加载新模型...");
                 try {
                     await invoke("stop_service");
@@ -125,9 +134,11 @@ export function ModelsTab({
                     await new Promise(r => setTimeout(r, 1000));
                     await invoke("start_service");
                     setRunning(true);
+                    setStartingUp?.(false);
                     addLog?.("success", "[OK] 服务已重启，新模型配置生效");
                 } catch (restartErr) {
                     addLog?.("error", `重启服务失败: ${restartErr}`);
+                    setStartingUp?.(false);
                 }
             }
         } catch (err) {
@@ -222,20 +233,40 @@ export function ModelsTab({
                                                 const active = isActiveModel(sp.name, m.id);
                                                 const pending = pendingModel === m.id;
                                                 return (
-                                                    <button
-                                                        key={m.id}
-                                                        className={`model-select-btn ${active ? "active" : ""} ${pending ? "pending" : ""}`}
-                                                        data-text={m.name || m.id}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (active) return;
-                                                            setPendingModel(m.id);
-                                                            setCustomModelInput("");
-                                                            setShowCustomInput(false);
-                                                        }}
-                                                    >
-                                                        {m.name || m.id}
-                                                    </button>
+                                                    <div key={m.id} className="model-chip-wrapper">
+                                                        <button
+                                                            className={`model-select-btn ${active ? "active" : ""} ${pending ? "pending" : ""}`}
+                                                            data-text={m.name || m.id}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (active) return;
+                                                                setPendingModel(m.id);
+                                                                setCustomModelInput("");
+                                                                setShowCustomInput(false);
+                                                            }}
+                                                        >
+                                                            {m.name || m.id}
+                                                        </button>
+                                                        <button
+                                                            className="model-chip-delete"
+                                                            title="删除此模型"
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                try {
+                                                                    await invoke("remove_model_from_provider", {
+                                                                        providerName: sp.name,
+                                                                        modelId: m.id,
+                                                                    });
+                                                                    await loadProviders();
+                                                                    onConfigChanged?.();
+                                                                } catch (err) {
+                                                                    console.error("Remove model failed:", err);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <X size={10} strokeWidth={2} />
+                                                        </button>
+                                                    </div>
                                                 );
                                             })}
                                             {/* Custom model toggle — same style as hand-input */}

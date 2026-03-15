@@ -164,7 +164,7 @@ export function useService({
     }, [addLog, running, servicePort, setRepairToast]);
 
     return {
-        loading, startingUp,
+        loading, startingUp, setStartingUp,
         uptime, servicePort,
         reinstalling, repairing,
         handleStart,

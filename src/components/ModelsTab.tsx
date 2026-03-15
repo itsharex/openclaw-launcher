@@ -2,16 +2,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // This file is part of OpenClaw Launcher. See LICENSE for details.
 /**
- * ModelsTab Component — AI Engine Page (Redesigned)
+ * ModelsTab Component — AI Engine Page
  *
  * Shows saved providers as card list with clickable model chips.
- * Active model is highlighted; click a different model + confirm to switch.
+ * Active model highlighted with project accent color.
  */
 
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Cpu, Plus, Trash2, Server, Key, ChevronDown, ChevronUp, Check, Edit3 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Cpu, Plus, Trash2, Server, Key, ChevronDown, ChevronUp, Edit3 } from "lucide-react";
+import { motion } from "framer-motion";
 import { Modal } from "./ui/Modal";
 import type { SavedProvider, ProviderInfo, CurrentConfig } from "../types";
 
@@ -70,6 +70,9 @@ export function ModelsTab({
 
     useEffect(() => { loadProviders(); }, [loadProviders, configVersion]);
 
+    // Also reload when currentConfig changes (e.g. from dashboard switch)
+    useEffect(() => { loadProviders(); }, [currentConfig?.model]);
+
     const handleOpenAddModal = () => {
         resetModalState();
         setShowKeyModal(true);
@@ -88,7 +91,7 @@ export function ModelsTab({
         }
     };
 
-    // Derive current active model from config
+    // Current active model from config
     const currentFullModel = currentConfig?.model || "";
     const currentProviderName = currentConfig?.provider || "";
 
@@ -104,7 +107,6 @@ export function ModelsTab({
             setPendingModel(null);
             setCustomModelInput("");
             setShowCustomInput(false);
-            // Trigger config refresh in parent
             onConfigChanged?.();
         } catch (err) {
             console.error("Switch failed:", err);
@@ -158,14 +160,14 @@ export function ModelsTab({
                 <div className="provider-cards-list">
                     {savedProviders.map((sp) => {
                         const isActive = currentProviderName === sp.name;
+                        const isExpanded = expandedProvider === sp.name;
                         return (
-                            <motion.div
+                            <div
                                 key={sp.name}
                                 className={`provider-saved-card ${isActive ? "active" : ""}`}
-                                layout
                             >
                                 <div className="provider-saved-header" onClick={() => {
-                                    setExpandedProvider(expandedProvider === sp.name ? null : sp.name);
+                                    setExpandedProvider(isExpanded ? null : sp.name);
                                     setPendingModel(null);
                                     setCustomModelInput("");
                                     setShowCustomInput(false);
@@ -177,7 +179,7 @@ export function ModelsTab({
                                         <div className="provider-saved-name">
                                             {sp.name}
                                             {isActive && <span className="agent-badge">当前使用</span>}
-                                            {sp.has_api_key && <Key size={12} strokeWidth={1.5} style={{ color: "var(--accent-green)", marginLeft: 4 }} />}
+                                            {sp.has_api_key && <Key size={12} strokeWidth={1.5} style={{ color: "var(--accent-success)", marginLeft: 4 }} />}
                                         </div>
                                         <div className="provider-saved-url">{sp.base_url || "无 Base URL"}</div>
                                     </div>
@@ -186,110 +188,103 @@ export function ModelsTab({
                                         {sp.api && <span className="agent-meta-tag">{sp.api}</span>}
                                     </div>
                                     <div className="provider-saved-expand">
-                                        {expandedProvider === sp.name ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                     </div>
                                 </div>
 
-                                {/* Expanded: clickable model chips + actions */}
-                                <AnimatePresence>
-                                    {expandedProvider === sp.name && (
-                                        <motion.div
-                                            className="provider-saved-models"
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: "auto", opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.2 }}
-                                        >
-                                            <div className="provider-model-grid">
-                                                {sp.models.map((m) => {
-                                                    const active = isActiveModel(sp.name, m.id);
-                                                    const pending = pendingModel === m.id;
-                                                    return (
-                                                        <button
-                                                            key={m.id}
-                                                            className={`provider-model-chip ${active ? "chip-active" : ""} ${pending ? "chip-pending" : ""}`}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (active) return;
-                                                                setPendingModel(m.id);
-                                                                setCustomModelInput("");
-                                                                setShowCustomInput(false);
-                                                            }}
-                                                        >
-                                                            {active && <Check size={12} strokeWidth={2} />}
-                                                            {m.name || m.id}
-                                                        </button>
-                                                    );
-                                                })}
-                                                {/* Custom model input toggle */}
+                                {/* Expanded: clickable model chips — no framer-motion to avoid jitter */}
+                                {isExpanded && (
+                                    <div className="provider-saved-models">
+                                        <div className="provider-model-grid">
+                                            {sp.models.map((m) => {
+                                                const active = isActiveModel(sp.name, m.id);
+                                                const pending = pendingModel === m.id;
+                                                return (
+                                                    <button
+                                                        key={m.id}
+                                                        className={`model-select-btn ${active ? "active" : ""} ${pending ? "pending" : ""}`}
+                                                        data-text={m.name || m.id}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (active) return;
+                                                            setPendingModel(m.id);
+                                                            setCustomModelInput("");
+                                                            setShowCustomInput(false);
+                                                        }}
+                                                    >
+                                                        {m.name || m.id}
+                                                    </button>
+                                                );
+                                            })}
+                                            {/* Custom model toggle — same style as hand-input */}
+                                            <button
+                                                className={`model-select-btn model-custom-toggle ${showCustomInput ? "active" : ""}`}
+                                                data-text="自定义"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowCustomInput(!showCustomInput);
+                                                    setPendingModel(null);
+                                                }}
+                                            >
+                                                <Edit3 size={12} strokeWidth={2} style={{ marginRight: 4 }} /> 自定义
+                                            </button>
+                                        </div>
+
+                                        {/* Custom model input */}
+                                        {showCustomInput && (
+                                            <div style={{ marginBottom: 8, marginTop: 6 }}>
+                                                <input
+                                                    type="text"
+                                                    placeholder="输入自定义模型 ID..."
+                                                    value={customModelInput}
+                                                    onChange={(e) => { setCustomModelInput(e.target.value); setPendingModel(null); }}
+                                                    className="input-field"
+                                                    style={{ width: "100%", fontSize: 13 }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="provider-saved-actions">
+                                            {/* Switch model button */}
+                                            {(pendingModel || (showCustomInput && customModelInput.trim())) && (
                                                 <button
-                                                    className={`provider-model-chip custom-toggle ${showCustomInput ? "chip-pending" : ""}`}
+                                                    className="btn-primary"
+                                                    style={{ fontSize: 13, padding: "6px 16px" }}
+                                                    disabled={switching}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        setShowCustomInput(!showCustomInput);
-                                                        setPendingModel(null);
+                                                        const modelId = pendingModel || customModelInput.trim();
+                                                        if (modelId) handleSwitchModel(sp.name, modelId);
                                                     }}
                                                 >
-                                                    <Edit3 size={12} strokeWidth={1.5} /> 自定义
+                                                    {switching ? "切换中..." : "确认切换"}
                                                 </button>
-                                            </div>
-
-                                            {/* Custom model input */}
-                                            {showCustomInput && (
-                                                <div style={{ marginBottom: 8 }}>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="输入自定义模型 ID..."
-                                                        value={customModelInput}
-                                                        onChange={(e) => { setCustomModelInput(e.target.value); setPendingModel(null); }}
-                                                        className="input-field"
-                                                        style={{ width: "100%", fontSize: 13 }}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    />
-                                                </div>
                                             )}
-
-                                            <div className="provider-saved-actions">
-                                                {/* Switch model button: show when a different model or custom is selected */}
-                                                {(pendingModel || (showCustomInput && customModelInput.trim())) && (
-                                                    <button
-                                                        className="btn-primary"
-                                                        style={{ fontSize: 13, padding: "6px 16px" }}
-                                                        disabled={switching}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const modelId = pendingModel || customModelInput.trim();
-                                                            if (modelId) handleSwitchModel(sp.name, modelId);
-                                                        }}
-                                                    >
-                                                        {switching ? "切换中..." : "确认切换"}
-                                                    </button>
-                                                )}
-                                                {/* Switch to this provider (non-active card, no model selected) */}
-                                                {!isActive && !pendingModel && !(showCustomInput && customModelInput.trim()) && sp.models.length > 0 && (
-                                                    <button
-                                                        className="btn-primary"
-                                                        style={{ fontSize: 13, padding: "6px 16px" }}
-                                                        disabled={switching}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleSwitchModel(sp.name, sp.models[0].id);
-                                                        }}
-                                                    >
-                                                        {switching ? "切换中..." : "切换到此模型商"}
-                                                    </button>
-                                                )}
+                                            {/* Switch to this provider (non-active, no model pending) */}
+                                            {!isActive && !pendingModel && !(showCustomInput && customModelInput.trim()) && sp.models.length > 0 && (
                                                 <button
-                                                    className="btn-ghost btn-danger-ghost"
-                                                    onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(sp.name); }}
+                                                    className="btn-primary"
+                                                    style={{ fontSize: 13, padding: "6px 16px" }}
+                                                    disabled={switching}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSwitchModel(sp.name, sp.models[0].id);
+                                                    }}
                                                 >
-                                                    <Trash2 size={14} strokeWidth={1.5} /> 删除
+                                                    {switching ? "切换中..." : "切换到此模型商"}
                                                 </button>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </motion.div>
+                                            )}
+                                            <button
+                                                className="btn-ghost btn-danger-ghost"
+                                                onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(sp.name); }}
+                                            >
+                                                <Trash2 size={14} strokeWidth={1.5} /> 删除
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         );
                     })}
                 </div>

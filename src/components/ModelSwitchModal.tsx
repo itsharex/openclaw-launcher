@@ -17,10 +17,18 @@ interface ModelSwitchModalProps {
 export function ModelSwitchModal({
     show, onClose, providers, currentConfig, handleSetModel,
 }: ModelSwitchModalProps) {
-    const [customModelId, setCustomModelId] = useState("");
+    // Track the locally selected model (visual state)
+    const currentModelId = currentConfig?.model?.includes("/")
+        ? currentConfig.model.split("/").slice(1).join("/")
+        : currentConfig?.model || "";
+
+    const [localSelected, setLocalSelected] = useState(currentModelId);
 
     const currentProvider = providers.find(p => p.id === currentConfig?.provider);
     const models = currentProvider?.models || [];
+
+    // Reset local state when modal opens
+    const effectiveSelected = localSelected || currentModelId;
 
     return (
         <Modal show={show} onClose={onClose} title="切换模型" maxWidth={400}>
@@ -29,38 +37,28 @@ export function ModelSwitchModal({
                 <div className="model-switch-list" style={{ marginTop: 12 }}>
                     <ModelSelectWithCustom
                         models={models}
-                        selectedModel={
-                            // Extract model id from full "provider/model" format
-                            currentConfig.model?.includes("/")
-                                ? currentConfig.model.split("/").slice(1).join("/")
-                                : currentConfig.model || ""
-                        }
+                        selectedModel={effectiveSelected}
                         onSelect={(modelId) => {
-                            setCustomModelId(modelId);
+                            setLocalSelected(modelId);
                         }}
                     />
                     <button
                         className="btn-primary"
                         style={{ width: '100%', marginTop: 12, padding: '10px' }}
                         onClick={async () => {
-                            const modelToSet = customModelId || (
-                                currentConfig.model?.includes("/")
-                                    ? currentConfig.model.split("/").slice(1).join("/")
-                                    : currentConfig.model || ""
-                            );
-                            if (!modelToSet.trim()) return;
-                            const fullModelId = `${currentConfig.provider}/${modelToSet.trim()}`;
+                            if (!effectiveSelected.trim()) return;
+                            const fullModelId = `${currentConfig.provider}/${effectiveSelected.trim()}`;
                             await handleSetModel(fullModelId);
                             onClose();
                         }}
-                        disabled={!customModelId}
+                        disabled={!effectiveSelected || effectiveSelected === currentModelId}
                     >
                         确认切换
                     </button>
                 </div>
             ) : (
                 <div style={{ color: "var(--text-secondary)", marginTop: 12 }}>
-                    请先在「模型」标签页配置 API 提供商
+                    请先在「AI 引擎」标签页配置模型提供商
                 </div>
             )}
             <ModalFooter>

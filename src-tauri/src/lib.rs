@@ -11,12 +11,92 @@ mod providers;
 mod service;
 mod setup;
 
+use tauri::{Emitter, Manager};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(service::ServiceState::default())
+        .setup(|app| {
+            // ===== System Tray =====
+            let show_i = MenuItem::with_id(app, "show", "打开面板", true, None::<&str>)?;
+            let browser_i = MenuItem::with_id(app, "browser", "打开浏览器", true, None::<&str>)?;
+            let separator1 = PredefinedMenuItem::separator(app)?;
+            let restart_i = MenuItem::with_id(app, "restart", "重启服务", true, None::<&str>)?;
+            let separator2 = PredefinedMenuItem::separator(app)?;
+            let quit_i = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+
+            let menu = Menu::with_items(
+                app,
+                &[&show_i, &browser_i, &separator1, &restart_i, &separator2, &quit_i],
+            )?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("OpenClaw Launcher")
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| {
+                    match event.id.as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.unminimize();
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "browser" => {
+                            // Open the gateway in default browser
+                            let _ = open::that("http://localhost:18789?token=openclaw-launcher-local");
+                        }
+                        "restart" => {
+                            // Emit restart event to frontend — it has the hooks to stop+start
+                            let _ = app.emit("tray-restart-service", ());
+                        }
+                        "quit" => {
+                            // Stop the service before exiting
+                            let state = app.state::<service::ServiceState>();
+                            let mut guard = state.child.lock().unwrap();
+                            if let Some(mut child) = guard.take() {
+                                let _ = child.kill();
+                                let _ = child.wait();
+                            }
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    // Left-click opens the panel
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.unminimize();
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Intercept close → hide to tray instead of quitting
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             // Environment
             environment::check_node_exists,

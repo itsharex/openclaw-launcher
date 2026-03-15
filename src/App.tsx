@@ -1,8 +1,9 @@
 // Copyright (C) 2026 ZsTs119
 // SPDX-License-Identifier: GPL-3.0-only
 // This file is part of OpenClaw Launcher. See LICENSE for details.
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { save } from "@tauri-apps/plugin-dialog";
 import { Activity, SlidersHorizontal, Network } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -35,7 +36,8 @@ function App() {
   const [running, setRunning] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [feedbackModal, setFeedbackModal] = useState<{ title: string; msg: string; url?: string } | null>(null);
-  const APP_VERSION = "0.4.3";
+  const APP_VERSION = "0.4.4";
+  const updateChecked = useRef(false);
 
   // === Hooks ===
   const {
@@ -83,6 +85,49 @@ function App() {
 
   // Combined loading state: either hook might be loading
   const loading = setupLoading || serviceLoading;
+
+  // ===== Startup update check (runs once when phase becomes ready) =====
+  useEffect(() => {
+    if (phase !== "ready" || updateChecked.current) return;
+    updateChecked.current = true;
+    (async () => {
+      try {
+        const res = await fetch('https://api.github.com/repos/ZsTs119/openclaw-launcher/releases/latest');
+        if (!res.ok) return;
+        const data = await res.json();
+        const rawTag = data.tag_name || '';
+        const isSemver = /^v?\d+\.\d+\.\d+$/.test(rawTag);
+        const latestVersion = rawTag.replace(/^v/, '');
+        if (isSemver && latestVersion !== APP_VERSION) {
+          setFeedbackModal({
+            title: '发现更新',
+            msg: `发现新版本 v${latestVersion}！\n当前版本 v${APP_VERSION}`,
+            url: data.html_url || 'https://github.com/ZsTs119/openclaw-launcher/releases',
+          });
+        }
+      } catch {
+        // Silently ignore network errors — don't bother the user
+      }
+    })();
+  }, [phase]);
+
+  // ===== Tray restart-service listener =====
+  useEffect(() => {
+    const unlisten = listen('tray-restart-service', async () => {
+      try {
+        if (running) {
+          await invoke('stop_service');
+          setRunning(false);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        await invoke('start_service');
+        setRunning(true);
+      } catch (err) {
+        addLog('error', `托盘重启服务失败: ${err}`);
+      }
+    });
+    return () => { unlisten.then((fn) => fn()); };
+  }, [running]);
 
   const getStatusClass = () => {
     if (loading) return "loading";

@@ -120,7 +120,7 @@ export function ApiKeyModal({
                             </div>
                         )}
 
-                        <div style={{ minHeight: 280 }}>
+                        <div style={{ minHeight: 420 }}>
                             {selectedCategory === "custom" ? (
                                 <div className="modal-form animate-fade-in">
                                     <div className="form-group">

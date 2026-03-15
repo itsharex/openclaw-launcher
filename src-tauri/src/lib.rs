@@ -8,6 +8,7 @@ mod download;
 mod environment;
 mod installer;
 mod paths;
+mod provider_mgr;
 mod providers;
 mod service;
 mod setup;
@@ -148,6 +149,10 @@ pub fn run() {
             agents::update_agent,
             agents::delete_agent,
             agents::list_skills,
+            // Provider management
+            provider_mgr::list_saved_providers,
+            provider_mgr::list_all_models,
+            provider_mgr::delete_provider,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -42,6 +42,20 @@ export interface SkillInfo {
     path: string;
 }
 
+export interface SavedProvider {
+    name: string;
+    base_url: string;
+    api: string | null;
+    has_api_key: boolean;
+    model_count: number;
+    models: SavedModel[];
+}
+
+export interface SavedModel {
+    id: string;
+    name: string | null;
+}
+
 export interface ProviderInfo {
     id: string;
     name: string;

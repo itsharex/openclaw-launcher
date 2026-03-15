@@ -166,6 +166,50 @@ pub fn remove_model_from_provider(provider_name: String, model_id: String) -> Re
     }
 }
 
+/// Add a model to a provider's models array without switching the default model
+#[tauri::command]
+pub fn add_model_to_provider(provider_name: String, model_id: String) -> Result<(), String> {
+    let mut config = read_config()?;
+
+    let provider_obj = config
+        .get_mut("models")
+        .and_then(|m| m.get_mut("providers"))
+        .and_then(|p| p.get_mut(&provider_name));
+
+    if provider_obj.is_none() {
+        return Err(format!("Provider '{}' 不存在", provider_name));
+    }
+
+    let prov = provider_obj.unwrap();
+    if prov.get("models").is_none() {
+        prov["models"] = serde_json::json!([]);
+    }
+
+    let arr = prov.get_mut("models").unwrap().as_array_mut()
+        .ok_or("models 不是数组")?;
+
+    let already_exists = arr.iter().any(|m|
+        m.get("id").and_then(|id| id.as_str()) == Some(&model_id)
+    );
+
+    if already_exists {
+        return Ok(()); // Already present, no-op
+    }
+
+    arr.push(serde_json::json!({
+        "id": model_id,
+        "name": model_id,
+        "reasoning": false,
+        "input": ["text"],
+        "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+        "contextWindow": 128000,
+        "maxTokens": 8192
+    }));
+
+    write_config(&config)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

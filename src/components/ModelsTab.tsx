@@ -294,39 +294,69 @@ export function ModelsTab({
                                             </button>
                                         </div>
 
-                                        {/* Custom model input */}
+                                        {/* Custom model input + confirm add */}
                                         {showCustomInput && (
-                                            <div style={{ marginBottom: 8, marginTop: 6 }}>
+                                            <div style={{ display: "flex", gap: 6, marginBottom: 8, marginTop: 6, alignItems: "center" }}>
                                                 <input
                                                     type="text"
                                                     placeholder="输入自定义模型 ID..."
                                                     value={customModelInput}
-                                                    onChange={(e) => { setCustomModelInput(e.target.value); setPendingModel(null); }}
+                                                    onChange={(e) => { setCustomModelInput(e.target.value); }}
                                                     className="input-field"
-                                                    style={{ width: "100%", fontSize: 13 }}
+                                                    style={{ flex: 1, fontSize: 13 }}
                                                     onClick={(e) => e.stopPropagation()}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter" && customModelInput.trim()) {
+                                                            e.stopPropagation();
+                                                            (async () => {
+                                                                const mid = customModelInput.trim();
+                                                                await invoke("add_model_to_provider", { providerName: sp.name, modelId: mid });
+                                                                setCustomModelInput("");
+                                                                setShowCustomInput(false);
+                                                                await loadProviders();
+                                                                onConfigChanged?.();
+                                                            })();
+                                                        }
+                                                    }}
                                                 />
+                                                <button
+                                                    className="btn-primary"
+                                                    style={{ fontSize: 12, padding: "6px 12px", whiteSpace: "nowrap" }}
+                                                    disabled={!customModelInput.trim()}
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        const mid = customModelInput.trim();
+                                                        if (!mid) return;
+                                                        // Add the model to provider list without switching
+                                                        await invoke("add_model_to_provider", { providerName: sp.name, modelId: mid });
+                                                        setCustomModelInput("");
+                                                        setShowCustomInput(false);
+                                                        await loadProviders();
+                                                        onConfigChanged?.();
+                                                    }}
+                                                >
+                                                    确认添加
+                                                </button>
                                             </div>
                                         )}
 
                                         <div className="provider-saved-actions">
-                                            {/* Switch model button */}
-                                            {(pendingModel || (showCustomInput && customModelInput.trim())) && (
+                                            {/* Switch model button — only when a chip is selected */}
+                                            {pendingModel && (
                                                 <button
                                                     className="btn-primary"
                                                     style={{ fontSize: 13, padding: "6px 16px" }}
                                                     disabled={switching}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        const modelId = pendingModel || customModelInput.trim();
-                                                        if (modelId) handleSwitchModel(sp.name, modelId);
+                                                        if (pendingModel) handleSwitchModel(sp.name, pendingModel);
                                                     }}
                                                 >
                                                     {switching ? "切换中..." : "确认切换"}
                                                 </button>
                                             )}
                                             {/* Switch to this provider (non-active, no model pending) */}
-                                            {!isActive && !pendingModel && !(showCustomInput && customModelInput.trim()) && sp.models.length > 0 && (
+                                            {!isActive && !pendingModel && sp.models.length > 0 && (
                                                 <button
                                                     className="btn-primary"
                                                     style={{ fontSize: 13, padding: "6px 16px" }}

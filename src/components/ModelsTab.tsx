@@ -36,6 +36,9 @@ interface ModelsTabProps {
     configVersion: number;
     resetModalState: () => void;
     onConfigChanged?: () => void;
+    running?: boolean;
+    addLog?: (level: string, msg: string) => void;
+    setRunning?: (r: boolean) => void;
 }
 
 export function ModelsTab({
@@ -44,6 +47,9 @@ export function ModelsTab({
     configVersion,
     resetModalState,
     onConfigChanged,
+    running,
+    addLog,
+    setRunning,
 }: ModelsTabProps) {
     const [savedProviders, setSavedProviders] = useState<SavedProvider[]>([]);
     const [loading, setLoading] = useState(true);
@@ -84,6 +90,8 @@ export function ModelsTab({
             await invoke("delete_provider", { name });
             setShowDeleteConfirm(null);
             await loadProviders();
+            // Refresh currentConfig — if last provider deleted, hint clears
+            onConfigChanged?.();
         } catch (err) {
             console.error("Delete failed:", err);
         } finally {
@@ -108,6 +116,20 @@ export function ModelsTab({
             setCustomModelInput("");
             setShowCustomInput(false);
             onConfigChanged?.();
+            // Auto-restart service if running so new model takes effect
+            if (running && setRunning) {
+                addLog?.("info", "正在重启服务以加载新模型...");
+                try {
+                    await invoke("stop_service");
+                    setRunning(false);
+                    await new Promise(r => setTimeout(r, 1000));
+                    await invoke("start_service");
+                    setRunning(true);
+                    addLog?.("success", "[OK] 服务已重启，新模型配置生效");
+                } catch (restartErr) {
+                    addLog?.("error", `重启服务失败: ${restartErr}`);
+                }
+            }
         } catch (err) {
             console.error("Switch failed:", err);
         } finally {

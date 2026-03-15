@@ -70,7 +70,11 @@ export function useConfig({ addLog, running, setRunning }: UseConfigOptions) {
             });
             setConfigStatus(result);
             addLog("success", result);
-            setCurrentConfig({ has_api_key: true, provider: selectedProvider, model: selectedModel, base_url: baseUrlInput || null });
+            // Use full provider/model format for consistent matching
+            const fullModelId = selectedModel
+                ? `${selectedProvider || "custom"}/${selectedModel}`
+                : null;
+            setCurrentConfig({ has_api_key: true, provider: selectedProvider, model: fullModelId, base_url: baseUrlInput || null });
             setShowKeyModal(false);
             setConfigVersion(v => v + 1);
 
@@ -111,6 +115,20 @@ export function useConfig({ addLog, running, setRunning }: UseConfigOptions) {
             } : prev);
             // Trigger all consumers to reload (ModelsTab, etc.)
             setConfigVersion(v => v + 1);
+            // Auto-restart service if running so new model takes effect
+            if (running) {
+                addLog("info", "正在重启服务以加载新模型...");
+                try {
+                    await invoke("stop_service");
+                    setRunning(false);
+                    await new Promise(r => setTimeout(r, 1000));
+                    await invoke("start_service");
+                    setRunning(true);
+                    addLog("success", "[OK] 服务已重启，新模型配置生效");
+                } catch (restartErr) {
+                    addLog("error", `重启服务失败: ${restartErr}`);
+                }
+            }
         } catch (err) {
             setConfigStatus(`[!] 切换失败: ${err}`);
         }

@@ -233,6 +233,9 @@ function App() {
               configVersion={configVersion}
               resetModalState={resetModalState}
               onConfigChanged={checkApiKey}
+              running={running}
+              addLog={addLog}
+              setRunning={setRunning}
             />
           )}
 

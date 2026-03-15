@@ -126,7 +126,8 @@ export function useConfig({ addLog, running, setRunning, setStartingUp }: UseCon
                     await new Promise(r => setTimeout(r, 1000));
                     await invoke("start_service");
                     setRunning(true);
-                    setStartingUp?.(false);
+                    // Don't clear startingUp here — useService event listener
+                    // clears it when service emits "started on" / "ready on"
                     addLog("success", "[OK] 服务已重启，新模型配置生效");
                 } catch (restartErr) {
                     addLog("error", `重启服务失败: ${restartErr}`);

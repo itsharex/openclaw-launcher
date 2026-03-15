@@ -43,6 +43,7 @@ interface ModelsTabProps {
 }
 
 export function ModelsTab({
+    providers,
     setShowKeyModal,
     currentConfig,
     configVersion,
@@ -114,6 +115,13 @@ export function ModelsTab({
     const isActiveModel = (providerName: string, modelId: string) =>
         currentFullModel === `${providerName}/${modelId}`;
 
+    // Check if a model is custom (not from built-in catalog)
+    const isCustomModel = (providerName: string, modelId: string): boolean => {
+        const catalogProvider = providers.find(p => p.id === providerName);
+        if (!catalogProvider) return true; // Entire provider is custom
+        return !catalogProvider.models?.some(cm => cm.id === modelId);
+    };
+
     const handleSwitchModel = async (providerName: string, modelId: string) => {
         const fullId = `${providerName}/${modelId}`;
         if (fullId === currentFullModel) return;
@@ -134,7 +142,8 @@ export function ModelsTab({
                     await new Promise(r => setTimeout(r, 1000));
                     await invoke("start_service");
                     setRunning(true);
-                    setStartingUp?.(false);
+                    // Don't clear startingUp — useService event listener
+                    // clears it when service emits "started on" / "ready on"
                     addLog?.("success", "[OK] 服务已重启，新模型配置生效");
                 } catch (restartErr) {
                     addLog?.("error", `重启服务失败: ${restartErr}`);
@@ -247,25 +256,27 @@ export function ModelsTab({
                                                         >
                                                             {m.name || m.id}
                                                         </button>
-                                                        <button
-                                                            className="model-chip-delete"
-                                                            title="删除此模型"
-                                                            onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                try {
-                                                                    await invoke("remove_model_from_provider", {
-                                                                        providerName: sp.name,
-                                                                        modelId: m.id,
-                                                                    });
-                                                                    await loadProviders();
-                                                                    onConfigChanged?.();
-                                                                } catch (err) {
-                                                                    console.error("Remove model failed:", err);
-                                                                }
-                                                            }}
-                                                        >
-                                                            <X size={10} strokeWidth={2} />
-                                                        </button>
+                                                        {isCustomModel(sp.name, m.id) && (
+                                                            <button
+                                                                className="model-chip-delete"
+                                                                title="删除此模型"
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    try {
+                                                                        await invoke("remove_model_from_provider", {
+                                                                            providerName: sp.name,
+                                                                            modelId: m.id,
+                                                                        });
+                                                                        await loadProviders();
+                                                                        onConfigChanged?.();
+                                                                    } catch (err) {
+                                                                        console.error("Remove model failed:", err);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <X size={10} strokeWidth={2} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
